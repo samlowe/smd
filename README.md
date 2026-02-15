@@ -32,21 +32,83 @@ smd
 | Ctrl+- | Zoom out |
 | Ctrl+0 | Reset zoom |
 
-## Building
+## Building from Source
 
-Requires [Rust](https://rustup.rs), [Node.js](https://nodejs.org), and system dependencies for Tauri on Linux:
+### Prerequisites
+
+You need [Rust](https://rustup.rs) and [Node.js](https://nodejs.org) on all platforms. The Tauri CLI is included as a Cargo dependency — no separate install is needed.
 
 ```sh
-# Linux dependencies (Debian/Ubuntu)
-sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev
+# Install Rust (all platforms)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Build
+# Node.js — install from https://nodejs.org or via your package manager
+```
+
+### Linux
+
+#### Debian / Ubuntu
+
+```sh
+sudo apt update
+sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+```
+
+#### Fedora / RHEL
+
+```sh
+sudo dnf install webkit2gtk4.1-devel gtk3-devel libappindicator-gtk3-devel librsvg2-devel
+```
+
+#### Arch Linux
+
+```sh
+sudo pacman -S webkit2gtk-4.1 gtk3 libappindicator-gtk3 librsvg
+```
+
+Then build:
+
+```sh
 npm install
 cargo tauri build
 ```
 
-The binary will be at `src-tauri/target/release/smd`. Packages (.deb, .rpm, .AppImage) are in `src-tauri/target/release/bundle/`.
+Output:
+- Binary: `src-tauri/target/release/smd`
+- Packages: `src-tauri/target/release/bundle/` (.deb, .rpm, .AppImage)
 
-## License
+### macOS
 
-MIT
+No extra system dependencies — Tauri uses the built-in WebKit WebView.
+
+```sh
+npm install
+cargo tauri build
+```
+
+Output:
+- App bundle: `src-tauri/target/release/bundle/macos/smd.app`
+- Disk image: `src-tauri/target/release/bundle/dmg/smd_0.1.0_aarch64.dmg`
+
+### Windows
+
+Install the [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with the "Desktop development with C++" workload. Tauri uses the built-in WebView2 (included in Windows 10/11).
+
+```sh
+npm install
+cargo tauri build
+```
+
+Output:
+- Executable: `src-tauri\target\release\smd.exe`
+- Installer: `src-tauri\target\release\bundle\msi\smd_0.1.0_x64_en-US.msi`
+- Setup: `src-tauri\target\release\bundle\nsis\smd_0.1.0_x64-setup.exe`
+
+### Development mode
+
+For a faster feedback loop during development (hot-reloading frontend, debug build):
+
+```sh
+npm install
+cargo tauri dev
+```
