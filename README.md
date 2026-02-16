@@ -36,11 +36,14 @@ smd
 
 ### Prerequisites
 
-You need [Rust](https://rustup.rs) and [Node.js](https://nodejs.org) on all platforms. The Tauri CLI is included as a Cargo dependency — no separate install is needed.
+You need [Rust](https://rustup.rs), [Node.js](https://nodejs.org), and the Tauri CLI on all platforms.
 
 ```sh
 # Install Rust (all platforms)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Install the Tauri CLI
+cargo install tauri-cli
 
 # Node.js — install from https://nodejs.org or via your package manager
 ```
