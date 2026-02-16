@@ -111,7 +111,7 @@ cargo tauri build
 
 Output:
 - App bundle: `src-tauri/target/release/bundle/macos/smd.app`
-- Disk image: `src-tauri/target/release/bundle/dmg/smd_0.2.0_aarch64.dmg`
+- Disk image: `src-tauri/target/release/bundle/dmg/smd_0.2.1_aarch64.dmg`
 
 ### Windows
 
@@ -124,8 +124,8 @@ cargo tauri build
 
 Output:
 - Executable: `src-tauri\target\release\smd.exe`
-- Installer: `src-tauri\target\release\bundle\msi\smd_0.2.0_x64_en-US.msi`
-- Setup: `src-tauri\target\release\bundle\nsis\smd_0.2.0_x64-setup.exe`
+- Installer: `src-tauri\target\release\bundle\msi\smd_0.2.1_x64_en-US.msi`
+- Setup: `src-tauri\target\release\bundle\nsis\smd_0.2.1_x64-setup.exe`
 
 ### Development mode
 
