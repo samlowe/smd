@@ -32,12 +32,5 @@
       }
     }
   },
-  "plugins": {
-    "dialog": {
-      "open": true
-    },
-    "shell": {
-      "open": true
-    }
-  }
+  "plugins": {}
 }
