@@ -29,12 +29,14 @@
           <circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5M5 7h4M7 5v4"/>
         </svg>
       </button>
-      <button id="btn-theme" title="Toggle theme (Ctrl+T)">
-        <svg id="icon-sun" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/>
-        </svg>
-        <svg id="icon-moon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none">
-          <path d="M13.36 10.06A6 6 0 015.94 2.64 6 6 0 1013.36 10.06z"/>
+      <button id="btn-theme" title="Theme picker (Ctrl+T)">
+        <!-- palette icon -->
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6.5"/>
+          <circle cx="5.5" cy="6" r="1" fill="currentColor" stroke="none"/>
+          <circle cx="8" cy="4.5" r="1" fill="currentColor" stroke="none"/>
+          <circle cx="10.5" cy="6" r="1" fill="currentColor" stroke="none"/>
+          <circle cx="5.5" cy="9" r="1" fill="currentColor" stroke="none"/>
         </svg>
       </button>
     </div>
@@ -42,17 +44,38 @@
   <div id="content-wrapper">
     <article id="content" class="markdown-body"></article>
   </div>
+  <!-- Theme picker panel -->
+  <div id="theme-panel">
+    <div class="theme-panel-header">Color Theme</div>
+    <div class="theme-panel-list" id="theme-list"></div>
+    <div class="theme-panel-divider"></div>
+    <div class="theme-panel-header">Code Font</div>
+    <div class="theme-panel-fonts">
+      <div class="font-select-row">
+        <select id="font-select"></select>
+      </div>
+    </div>
+    <div class="theme-panel-footer">
+      <button id="btn-import-theme" title="Import a custom theme JSON file">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M8 3v10M3 8h10"/>
+        </svg>
+        Import custom theme
+      </button>
+    </div>
+  </div>
   <div id="empty-state">
     <div class="empty-message">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.4">
         <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
       </svg>
       <p>Open a Markdown file to get started</p>
-      <p class="hint">Ctrl+O to open &middot; or drag &amp; drop a file</p>
+      <p class="hint">Ctrl+O to open &middot; drag &amp; drop &middot; Ctrl+T for themes</p>
     </div>
   </div>
   <script src="marked.min.js"></script>
   <script src="highlight.min.js"></script>
+  <script src="themes.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

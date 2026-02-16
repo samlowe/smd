@@ -49,6 +49,24 @@ async fn open_file_dialog(app: tauri::AppHandle) -> Option<String> {
         .and_then(|p| p.to_str().map(String::from))
 }
 
+#[tauri::command]
+async fn open_theme_file_dialog(app: tauri::AppHandle) -> Option<String> {
+    let (sender, receiver) = std::sync::mpsc::channel();
+    app.dialog()
+        .file()
+        .add_filter("Theme", &["json"])
+        .pick_file(move |file_response| {
+            let _ = sender.send(file_response);
+        });
+
+    tauri::async_runtime::spawn_blocking(move || receiver.recv().ok().flatten())
+        .await
+        .ok()
+        .flatten()
+        .and_then(|f| f.into_path().ok())
+        .and_then(|p| p.to_str().map(String::from))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let file_arg: Option<PathBuf> = std::env::args().nth(1).map(PathBuf::from);
@@ -64,6 +82,7 @@ pub fn run() {
             get_initial_file,
             set_current_file,
             open_file_dialog,
+            open_theme_file_dialog,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
