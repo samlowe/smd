@@ -8,7 +8,10 @@ Built with [Tauri v2](https://tauri.app) — uses the system WebView, so the bin
 
 - **GitHub Flavored Markdown** — tables, task lists, strikethrough, fenced code blocks
 - **Syntax highlighting** — automatic language detection for code blocks
-- **Light & dark themes** — follows system preference, toggle with Ctrl+T, remembers your choice
+- **15 built-in themes** — GitHub Light/Dark, Monokai, Dracula, Nord, Solarized, Tokyo Night, Gruvbox, and more
+- **Custom themes** — create and save your own themes via the theme editor
+- **Font presets** — choose from System, Inter, JetBrains Mono, Fira Code, Iosevka, or Source Code Pro
+- **YAML frontmatter** — displays metadata (title, author, tags, etc.) as a styled card above the content
 - **Zoom** — Ctrl+/-, Ctrl+scroll, or toolbar buttons
 - **File opening** — CLI argument, Ctrl+O dialog, or drag & drop
 
@@ -27,10 +30,27 @@ smd
 | Shortcut | Action |
 |----------|--------|
 | Ctrl+O | Open file |
-| Ctrl+T | Toggle light/dark theme |
+| Ctrl+T | Cycle through themes |
 | Ctrl+= | Zoom in |
 | Ctrl+- | Zoom out |
 | Ctrl+0 | Reset zoom |
+
+## Frontmatter
+
+smd recognises YAML frontmatter delimited by `---`. Any fields are displayed as a styled card above the rendered markdown — useful for skills files, blog posts, notes, or any document with metadata.
+
+```markdown
+---
+title: My Document
+author: Jane Doe
+date: 2026-02-16
+tags: [markdown, notes]
+---
+
+# Hello world
+```
+
+Supported YAML features: scalars, quoted strings, inline and indented lists, folded (`>`) and literal (`|`) multi-line strings, booleans, and comments.
 
 ## Building from Source
 
@@ -91,7 +111,7 @@ cargo tauri build
 
 Output:
 - App bundle: `src-tauri/target/release/bundle/macos/smd.app`
-- Disk image: `src-tauri/target/release/bundle/dmg/smd_0.1.0_aarch64.dmg`
+- Disk image: `src-tauri/target/release/bundle/dmg/smd_0.2.0_aarch64.dmg`
 
 ### Windows
 
@@ -104,8 +124,8 @@ cargo tauri build
 
 Output:
 - Executable: `src-tauri\target\release\smd.exe`
-- Installer: `src-tauri\target\release\bundle\msi\smd_0.1.0_x64_en-US.msi`
-- Setup: `src-tauri\target\release\bundle\nsis\smd_0.1.0_x64-setup.exe`
+- Installer: `src-tauri\target\release\bundle\msi\smd_0.2.0_x64_en-US.msi`
+- Setup: `src-tauri\target\release\bundle\nsis\smd_0.2.0_x64-setup.exe`
 
 ### Development mode
 
