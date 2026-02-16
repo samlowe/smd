@@ -29,17 +29,23 @@ fn set_current_file(state: State<AppState>, path: String) {
 }
 
 #[tauri::command]
-fn open_file_dialog(app: tauri::AppHandle) -> Option<String> {
-    let file = app
-        .dialog()
+async fn open_file_dialog(app: tauri::AppHandle) -> Option<String> {
+    let (sender, receiver) = std::sync::mpsc::channel();
+    app.dialog()
         .file()
         .add_filter(
             "Markdown",
             &["md", "markdown", "mdown", "mkd", "mkdn", "mdwn", "txt"],
         )
-        .blocking_pick_file();
+        .pick_file(move |file_response| {
+            let _ = sender.send(file_response);
+        });
 
-    file.and_then(|f| f.into_path().ok())
+    tauri::async_runtime::spawn_blocking(move || receiver.recv().ok().flatten())
+        .await
+        .ok()
+        .flatten()
+        .and_then(|f| f.into_path().ok())
         .and_then(|p| p.to_str().map(String::from))
 }
 
