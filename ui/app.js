@@ -41,6 +41,117 @@ function highlightCodeBlocks() {
   });
 }
 
+// ---- YAML Frontmatter ----
+
+/**
+ * Extract YAML frontmatter from markdown text.
+ * Returns { meta: object|null, body: string }.
+ */
+function parseFrontmatter(text) {
+  const match = text.match(/^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/);
+  if (!match) return { meta: null, body: text };
+
+  const yamlBlock = match[1];
+  const body = text.slice(match[0].length);
+  const meta = parseSimpleYaml(yamlBlock);
+  return { meta, body };
+}
+
+/**
+ * Lightweight YAML parser for frontmatter.
+ * Handles scalars, quoted strings, simple lists (both inline [...] and
+ * indented "- item" style), and multi-line folded/literal strings.
+ */
+function parseSimpleYaml(yaml) {
+  const result = {};
+  const lines = yaml.split(/\r?\n/);
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Skip blank lines and comments
+    if (/^\s*$/.test(line) || /^\s*#/.test(line)) { i++; continue; }
+
+    // Match top-level key: value
+    const kvMatch = line.match(/^([A-Za-z_][\w.-]*)\s*:\s*(.*)/);
+    if (!kvMatch) { i++; continue; }
+
+    const key = kvMatch[1];
+    let rawVal = kvMatch[2].trim();
+
+    // Inline list: [a, b, c]
+    if (rawVal.startsWith("[") && rawVal.endsWith("]")) {
+      result[key] = rawVal.slice(1, -1).split(",").map((s) => stripQuotes(s.trim())).filter(Boolean);
+      i++; continue;
+    }
+
+    // Multi-line block scalar: | or >
+    if (rawVal === "|" || rawVal === ">") {
+      const fold = rawVal === ">";
+      let block = "";
+      i++;
+      while (i < lines.length && /^[ \t]/.test(lines[i])) {
+        block += (block && fold ? " " : (block ? "\n" : "")) + lines[i].replace(/^[ \t]+/, "");
+        i++;
+      }
+      result[key] = block;
+      continue;
+    }
+
+    // Indented list items on following lines
+    if (rawVal === "") {
+      // Check if next lines are list items
+      const items = [];
+      let j = i + 1;
+      while (j < lines.length && /^[ \t]+- /.test(lines[j])) {
+        items.push(stripQuotes(lines[j].replace(/^[ \t]+- /, "").trim()));
+        j++;
+      }
+      if (items.length > 0) {
+        result[key] = items;
+        i = j; continue;
+      }
+      // Otherwise it's an empty value
+      result[key] = "";
+      i++; continue;
+    }
+
+    // Plain scalar or quoted string
+    result[key] = stripQuotes(rawVal);
+    i++;
+  }
+
+  return result;
+}
+
+function stripQuotes(s) {
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    return s.slice(1, -1);
+  }
+  // Handle YAML booleans
+  if (s === "true") return true;
+  if (s === "false") return false;
+  return s;
+}
+
+/**
+ * Render frontmatter metadata as a styled HTML card.
+ */
+function renderFrontmatter(meta) {
+  const rows = Object.entries(meta).map(([key, val]) => {
+    const displayVal = Array.isArray(val)
+      ? val.map((v) => `<span class="fm-tag">${escapeHtml(String(v))}</span>`).join(" ")
+      : escapeHtml(String(val));
+    return `<tr><td class="fm-key">${escapeHtml(key)}</td><td class="fm-val">${displayVal}</td></tr>`;
+  });
+  return `<div class="frontmatter"><table>${rows.join("")}</table></div>`;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 // ---- Theme Manager ----
 
 const ThemeManager = (() => {
@@ -287,7 +398,9 @@ function zoomReset() {
 // ---- File rendering ----
 
 function showContent(md, filename) {
-  const html = marked.parse(md);
+  const { meta, body } = parseFrontmatter(md);
+  const fmHtml = meta ? renderFrontmatter(meta) : "";
+  const html = fmHtml + marked.parse(body);
   content.innerHTML = html;
   highlightCodeBlocks();
   contentWrapper.classList.add("active");
