@@ -12,6 +12,8 @@ const ZOOM_STEP = 10;
 const ZOOM_MIN = 50;
 const ZOOM_MAX = 200;
 
+let currentFilePath = null;
+
 // ---- Elements ----
 
 const contentWrapper = document.getElementById("content-wrapper");
@@ -27,6 +29,13 @@ const themePanel = document.getElementById("theme-panel");
 const themeList = document.getElementById("theme-list");
 const fontSelect = document.getElementById("font-select");
 const btnImportTheme = document.getElementById("btn-import-theme");
+const btnDrawer = document.getElementById("btn-drawer");
+const fileDrawer = document.getElementById("file-drawer");
+const fileList = document.getElementById("file-list");
+const btnRecent = document.getElementById("btn-recent");
+const recentPanel = document.getElementById("recent-panel");
+const recentList = document.getElementById("recent-list");
+const recentEmpty = document.getElementById("recent-empty");
 
 // ---- Markdown setup ----
 
@@ -339,6 +348,7 @@ let themePanelOpen = false;
 function toggleThemePanel() {
   themePanelOpen = !themePanelOpen;
   themePanel.classList.toggle("open", themePanelOpen);
+  if (themePanelOpen) closeRecentPanel();
 }
 
 function closeThemePanel() {
@@ -350,6 +360,9 @@ function closeThemePanel() {
 document.addEventListener("mousedown", (e) => {
   if (themePanelOpen && !themePanel.contains(e.target) && e.target !== btnTheme && !btnTheme.contains(e.target)) {
     closeThemePanel();
+  }
+  if (recentPanelOpen && !recentPanel.contains(e.target) && e.target !== btnRecent && !btnRecent.contains(e.target)) {
+    closeRecentPanel();
   }
 });
 
@@ -374,6 +387,7 @@ function updateZoom() {
   content.style.transform = `scale(${currentZoom / 100})`;
   content.style.transformOrigin = "top center";
   zoomLevelEl.textContent = `${currentZoom}%`;
+  debouncedSaveState();
 }
 
 function zoomIn() {
@@ -394,6 +408,20 @@ function zoomReset() {
   currentZoom = 100;
   updateZoom();
 }
+
+// ---- Window state persistence ----
+
+let saveStateTimer = null;
+
+function debouncedSaveState() {
+  clearTimeout(saveStateTimer);
+  saveStateTimer = setTimeout(() => {
+    invoke("save_window_state", { zoom: currentZoom }).catch(() => {});
+  }, 500);
+}
+
+// Save state on window resize
+window.addEventListener("resize", debouncedSaveState);
 
 // ---- File rendering ----
 
@@ -419,7 +447,14 @@ async function openFile(path) {
   try {
     const text = await invoke("read_file", { path });
     await invoke("set_current_file", { path });
+    currentFilePath = path;
     showContent(text, path);
+
+    // Track in recent files
+    invoke("add_recent_file", { path }).catch(() => {});
+
+    // Update drawer highlight if open
+    if (drawerOpen) updateDrawerHighlight();
   } catch (err) {
     console.error("Failed to open file:", err);
   }
@@ -429,6 +464,143 @@ async function openFileDialog() {
   const selected = await invoke("open_file_dialog");
   if (selected) {
     await openFile(selected);
+  }
+}
+
+// ---- File drawer ----
+
+let drawerOpen = false;
+
+function toggleDrawer() {
+  drawerOpen = !drawerOpen;
+  fileDrawer.classList.toggle("open", drawerOpen);
+  btnDrawer.classList.toggle("active", drawerOpen);
+  if (drawerOpen) refreshFileList();
+}
+
+function closeDrawer() {
+  drawerOpen = false;
+  fileDrawer.classList.remove("open");
+  btnDrawer.classList.remove("active");
+}
+
+async function refreshFileList() {
+  try {
+    const files = await invoke("list_md_files");
+    fileList.innerHTML = "";
+
+    if (files.length === 0) {
+      const msg = document.createElement("div");
+      msg.className = "drawer-empty";
+      msg.textContent = "No .md files in folder";
+      fileList.appendChild(msg);
+      return;
+    }
+
+    for (const filePath of files) {
+      const btn = document.createElement("button");
+      btn.className = "drawer-file";
+      const name = filePath.split("/").pop().split("\\").pop();
+
+      // Small file icon
+      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      icon.setAttribute("width", "14");
+      icon.setAttribute("height", "14");
+      icon.setAttribute("viewBox", "0 0 16 16");
+      icon.setAttribute("fill", "none");
+      icon.setAttribute("stroke", "currentColor");
+      icon.setAttribute("stroke-width", "1.5");
+      icon.classList.add("drawer-file-icon");
+      const iconPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      iconPath.setAttribute("d", "M9 1.5H4a1 1 0 00-1 1v11a1 1 0 001 1h8a1 1 0 001-1V5.5L9 1.5zM9 1.5v4h4");
+      icon.appendChild(iconPath);
+
+      const label = document.createElement("span");
+      label.textContent = name;
+      label.style.overflow = "hidden";
+      label.style.textOverflow = "ellipsis";
+
+      btn.appendChild(icon);
+      btn.appendChild(label);
+      btn.title = filePath;
+
+      if (filePath === currentFilePath) {
+        btn.classList.add("active");
+      }
+
+      btn.addEventListener("click", () => openFile(filePath));
+      fileList.appendChild(btn);
+    }
+  } catch (err) {
+    console.error("Failed to list files:", err);
+  }
+}
+
+function updateDrawerHighlight() {
+  fileList.querySelectorAll(".drawer-file").forEach((btn) => {
+    btn.classList.toggle("active", btn.title === currentFilePath);
+  });
+}
+
+// ---- Recent files panel ----
+
+let recentPanelOpen = false;
+
+function toggleRecentPanel() {
+  recentPanelOpen = !recentPanelOpen;
+  recentPanel.classList.toggle("open", recentPanelOpen);
+  if (recentPanelOpen) {
+    closeThemePanel();
+    refreshRecentList();
+  }
+}
+
+function closeRecentPanel() {
+  recentPanelOpen = false;
+  recentPanel.classList.remove("open");
+}
+
+async function refreshRecentList() {
+  try {
+    const files = await invoke("get_recent_files");
+    recentList.innerHTML = "";
+
+    if (files.length === 0) {
+      recentEmpty.style.display = "";
+      return;
+    }
+
+    recentEmpty.style.display = "none";
+
+    for (const filePath of files) {
+      const btn = document.createElement("button");
+      btn.className = "recent-item";
+
+      const name = document.createElement("span");
+      name.className = "recent-item-name";
+      name.textContent = filePath.split("/").pop().split("\\").pop();
+
+      // Show parent directory for context
+      const parts = filePath.replace(/\\/g, "/").split("/");
+      const dir = parts.length > 1 ? parts.slice(0, -1).join("/") : "";
+
+      const pathEl = document.createElement("span");
+      pathEl.className = "recent-item-path";
+      pathEl.textContent = dir;
+
+      btn.appendChild(name);
+      btn.appendChild(pathEl);
+      btn.title = filePath;
+
+      btn.addEventListener("click", () => {
+        closeRecentPanel();
+        openFile(filePath);
+      });
+
+      recentList.appendChild(btn);
+    }
+  } catch (err) {
+    console.error("Failed to load recent files:", err);
   }
 }
 
@@ -471,8 +643,13 @@ document.addEventListener("keydown", (e) => {
   } else if (ctrl && e.key === "t") {
     e.preventDefault();
     toggleThemePanel();
+  } else if (ctrl && e.key === "b") {
+    e.preventDefault();
+    toggleDrawer();
   } else if (e.key === "Escape") {
-    closeThemePanel();
+    if (themePanelOpen) closeThemePanel();
+    if (recentPanelOpen) closeRecentPanel();
+    if (drawerOpen) closeDrawer();
   }
 });
 
@@ -499,10 +676,26 @@ btnZoomIn.addEventListener("click", zoomIn);
 btnZoomOut.addEventListener("click", zoomOut);
 btnTheme.addEventListener("click", toggleThemePanel);
 btnImportTheme.addEventListener("click", ThemeManager.importCustomTheme);
+btnDrawer.addEventListener("click", toggleDrawer);
+btnRecent.addEventListener("click", toggleRecentPanel);
 
-// ---- Init: load file from CLI arg ----
+// ---- Init: load file from CLI arg, restore zoom ----
 
 async function init() {
+  // Restore saved zoom
+  try {
+    const savedZoom = await invoke("get_saved_zoom");
+    if (savedZoom !== null && savedZoom >= ZOOM_MIN && savedZoom <= ZOOM_MAX) {
+      currentZoom = savedZoom;
+      content.style.transform = `scale(${currentZoom / 100})`;
+      content.style.transformOrigin = "top center";
+      zoomLevelEl.textContent = `${currentZoom}%`;
+    }
+  } catch (err) {
+    // Ignore — first run or corrupted state
+  }
+
+  // Load initial file from CLI arg
   const initialFile = await invoke("get_initial_file");
   if (initialFile) {
     await openFile(initialFile);

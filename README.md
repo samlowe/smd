@@ -12,7 +12,10 @@ Built with [Tauri v2](https://tauri.app) — uses the system WebView, so the bin
 - **Custom themes** — create and save your own themes via the theme editor
 - **Font presets** — choose from System, Inter, JetBrains Mono, Fira Code, Iosevka, or Source Code Pro
 - **YAML frontmatter** — displays metadata (title, author, tags, etc.) as a styled card above the content
-- **Zoom** — Ctrl+/-, Ctrl+scroll, or toolbar buttons
+- **File browser drawer** — toggle a sidebar listing all .md files in the working directory (Ctrl+B)
+- **Recent files** — quick access to the last 10 opened files from the toolbar
+- **Zoom** — Ctrl+/-, Ctrl+scroll, or toolbar buttons; remembered across sessions
+- **Remembers window size** — restores your last window dimensions on launch
 - **File opening** — CLI argument, Ctrl+O dialog, or drag & drop
 
 ## Usage
@@ -30,10 +33,12 @@ smd
 | Shortcut | Action |
 |----------|--------|
 | Ctrl+O | Open file |
+| Ctrl+B | Toggle file browser drawer |
 | Ctrl+T | Cycle through themes |
 | Ctrl+= | Zoom in |
 | Ctrl+- | Zoom out |
 | Ctrl+0 | Reset zoom |
+| Escape | Close open panels/drawer |
 
 ## Frontmatter
 
@@ -111,7 +116,7 @@ cargo tauri build
 
 Output:
 - App bundle: `src-tauri/target/release/bundle/macos/smd.app`
-- Disk image: `src-tauri/target/release/bundle/dmg/smd_0.2.1_aarch64.dmg`
+- Disk image: `src-tauri/target/release/bundle/dmg/smd_0.3.0_aarch64.dmg`
 
 ### Windows
 
@@ -124,8 +129,8 @@ cargo tauri build
 
 Output:
 - Executable: `src-tauri\target\release\smd.exe`
-- Installer: `src-tauri\target\release\bundle\msi\smd_0.2.1_x64_en-US.msi`
-- Setup: `src-tauri\target\release\bundle\nsis\smd_0.2.1_x64-setup.exe`
+- Installer: `src-tauri\target\release\bundle\msi\smd_0.3.0_x64_en-US.msi`
+- Setup: `src-tauri\target\release\bundle\nsis\smd_0.3.0_x64-setup.exe`
 
 ### Development mode
 

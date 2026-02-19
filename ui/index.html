@@ -10,9 +10,21 @@
 <body>
   <div id="toolbar">
     <div class="toolbar-left">
+      <button id="btn-drawer" title="File browser (Ctrl+B)">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/>
+          <line x1="5.5" y1="2.5" x2="5.5" y2="13.5"/>
+        </svg>
+      </button>
       <button id="btn-open" title="Open file (Ctrl+O)">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M2 13V3a1 1 0 011-1h4l2 2h4a1 1 0 011 1v1M2 13l2-6h11l-2 6H2z"/>
+        </svg>
+      </button>
+      <button id="btn-recent" title="Recent files">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6"/>
+          <polyline points="8,4.5 8,8 10.5,9.5"/>
         </svg>
       </button>
       <span id="filename"></span>
@@ -30,7 +42,6 @@
         </svg>
       </button>
       <button id="btn-theme" title="Theme picker (Ctrl+T)">
-        <!-- palette icon -->
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
           <circle cx="8" cy="8" r="6.5"/>
           <circle cx="5.5" cy="6" r="1" fill="currentColor" stroke="none"/>
@@ -41,8 +52,28 @@
       </button>
     </div>
   </div>
-  <div id="content-wrapper">
-    <article id="content" class="markdown-body"></article>
+  <div id="main-area">
+    <div id="file-drawer">
+      <div class="drawer-list" id="file-list"></div>
+    </div>
+    <div id="content-wrapper">
+      <article id="content" class="markdown-body"></article>
+    </div>
+    <div id="empty-state">
+      <div class="empty-message">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.4">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <p>Open a Markdown file to get started</p>
+        <p class="hint">Ctrl+O to open &middot; drag &amp; drop &middot; Ctrl+T for themes</p>
+      </div>
+    </div>
+  </div>
+  <!-- Recent files dropdown -->
+  <div id="recent-panel">
+    <div class="recent-panel-header">Recent Files</div>
+    <div class="recent-panel-list" id="recent-list"></div>
+    <div class="recent-panel-empty" id="recent-empty">No recent files</div>
   </div>
   <!-- Theme picker panel -->
   <div id="theme-panel">
@@ -62,15 +93,6 @@
         </svg>
         Import custom theme
       </button>
-    </div>
-  </div>
-  <div id="empty-state">
-    <div class="empty-message">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.4">
-        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
-      </svg>
-      <p>Open a Markdown file to get started</p>
-      <p class="hint">Ctrl+O to open &middot; drag &amp; drop &middot; Ctrl+T for themes</p>
     </div>
   </div>
   <script src="marked.min.js"></script>
