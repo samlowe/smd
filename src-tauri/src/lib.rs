@@ -151,12 +151,17 @@ fn get_recent_files(state: State<'_, AppState>) -> Vec<String> {
 
 #[tauri::command]
 fn add_recent_file(state: State<'_, AppState>, path: String) {
+    // Always store the fully resolved path so recents work from any cwd
+    let resolved = fs::canonicalize(&path)
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or(path);
+
     let mut persisted = load_persisted(&state.config_dir);
     let mut recents = persisted.recent_files.unwrap_or_default();
 
     // Remove if already present, then push to front
-    recents.retain(|p| p != &path);
-    recents.insert(0, path);
+    recents.retain(|p| p != &resolved);
+    recents.insert(0, resolved);
     recents.truncate(10);
 
     persisted.recent_files = Some(recents);
@@ -188,7 +193,10 @@ fn list_md_files() -> Result<Vec<String>, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let file_arg: Option<PathBuf> = std::env::args().nth(1).map(PathBuf::from);
+    let file_arg: Option<PathBuf> = std::env::args()
+        .nth(1)
+        .map(PathBuf::from)
+        .map(|p| fs::canonicalize(&p).unwrap_or(p));
     let config_dir = get_config_dir();
     let saved = load_persisted(&config_dir);
 
