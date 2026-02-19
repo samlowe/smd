@@ -1,6 +1,6 @@
 [package]
 name = "smd"
-version = "0.3.2"
+version = "0.3.3"
 description = "Simple Markdown Viewer"
 edition = "2021"
 

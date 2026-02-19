@@ -169,8 +169,16 @@ fn add_recent_file(state: State<'_, AppState>, path: String) {
 }
 
 #[tauri::command]
-fn list_md_files() -> Result<Vec<String>, String> {
-    let dir = std::env::current_dir().map_err(|e| e.to_string())?;
+fn list_md_files(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    // Use the directory of the open file; fall back to launch cwd
+    let dir = state
+        .current_file
+        .lock()
+        .unwrap()
+        .as_ref()
+        .and_then(|p| p.parent().map(PathBuf::from))
+        .or_else(|| std::env::current_dir().ok())
+        .ok_or_else(|| "Cannot determine directory".to_string())?;
     let mut files: Vec<String> = fs::read_dir(&dir)
         .map_err(|e| e.to_string())?
         .filter_map(|entry| {
