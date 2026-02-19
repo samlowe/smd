@@ -105,7 +105,18 @@ Output:
 - Binary: `src-tauri/target/release/smd`
 - Packages: `src-tauri/target/release/bundle/` (.deb, .rpm, .AppImage)
 
+The `.AppImage` is a portable single-file executable that runs on most Linux distributions without installation:
+
+```sh
+chmod +x smd_0.3.0_amd64.AppImage
+./smd_0.3.0_amd64.AppImage
+```
+
+To integrate it with your desktop (application menu, file associations), use [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) or move it to `~/.local/bin`.
+
 ### macOS
+
+> **Note:** These instructions are provisional and have not been tested. Please open an issue if you run into problems.
 
 No extra system dependencies — Tauri uses the built-in WebKit WebView.
 
@@ -119,6 +130,8 @@ Output:
 - Disk image: `src-tauri/target/release/bundle/dmg/smd_0.3.0_aarch64.dmg`
 
 ### Windows
+
+> **Note:** These instructions are provisional and have not been tested. Please open an issue if you run into problems.
 
 Install the [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with the "Desktop development with C++" workload. Tauri uses the built-in WebView2 (included in Windows 10/11).
 
