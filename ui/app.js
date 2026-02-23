@@ -425,11 +425,25 @@ window.addEventListener("resize", debouncedSaveState);
 
 // ---- File rendering ----
 
+function resolveRelativeImages(basePath) {
+  const dir = basePath.replace(/\\/g, "/").split("/").slice(0, -1).join("/");
+  const { convertFileSrc } = window.__TAURI__.core;
+  content.querySelectorAll("img").forEach((img) => {
+    const src = img.getAttribute("src");
+    if (!src) return;
+    // Leave data URIs and URLs with a scheme (http, https, asset, …) alone
+    if (/^[a-z][a-z0-9+\-.]*:/i.test(src)) return;
+    const absPath = src.startsWith("/") ? src : `${dir}/${src}`;
+    img.src = convertFileSrc(absPath);
+  });
+}
+
 function showContent(md, filename) {
   const { meta, body } = parseFrontmatter(md);
   const fmHtml = meta ? renderFrontmatter(meta) : "";
   const html = fmHtml + marked.parse(body);
   content.innerHTML = html;
+  resolveRelativeImages(filename);
   highlightCodeBlocks();
   contentWrapper.classList.add("active");
   emptyState.classList.add("hidden");

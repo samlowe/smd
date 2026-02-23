@@ -108,8 +108,8 @@ Output:
 The `.AppImage` is a portable single-file executable that runs on most Linux distributions without installation:
 
 ```sh
-chmod +x smd_0.3.3_amd64.AppImage
-./smd_0.3.3_amd64.AppImage
+chmod +x smd_0.3.4_amd64.AppImage
+./smd_0.3.4_amd64.AppImage
 ```
 
 To integrate it with your desktop (application menu, file associations), use [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) or move it to `~/.local/bin`.
@@ -127,7 +127,7 @@ cargo tauri build
 
 Output:
 - App bundle: `src-tauri/target/release/bundle/macos/smd.app`
-- Disk image: `src-tauri/target/release/bundle/dmg/smd_0.3.3_aarch64.dmg`
+- Disk image: `src-tauri/target/release/bundle/dmg/smd_0.3.4_aarch64.dmg`
 
 ### Windows
 
@@ -142,8 +142,8 @@ cargo tauri build
 
 Output:
 - Executable: `src-tauri\target\release\smd.exe`
-- Installer: `src-tauri\target\release\bundle\msi\smd_0.3.3_x64_en-US.msi`
-- Setup: `src-tauri\target\release\bundle\nsis\smd_0.3.3_x64-setup.exe`
+- Installer: `src-tauri\target\release\bundle\msi\smd_0.3.4_x64_en-US.msi`
+- Setup: `src-tauri\target\release\bundle\nsis\smd_0.3.4_x64-setup.exe`
 
 ### Development mode
 
