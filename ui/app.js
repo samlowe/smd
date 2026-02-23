@@ -36,6 +36,12 @@ const btnRecent = document.getElementById("btn-recent");
 const recentPanel = document.getElementById("recent-panel");
 const recentList = document.getElementById("recent-list");
 const recentEmpty = document.getElementById("recent-empty");
+const findBar = document.getElementById("find-bar");
+const findInput = document.getElementById("find-input");
+const findCount = document.getElementById("find-count");
+const btnFindPrev = document.getElementById("find-prev");
+const btnFindNext = document.getElementById("find-next");
+const btnFindClose = document.getElementById("find-close");
 
 // ---- Markdown setup ----
 
@@ -459,6 +465,7 @@ function showContent(md, filename) {
 
 async function openFile(path) {
   try {
+    closeFindBar();
     const text = await invoke("read_file", { path });
     await invoke("set_current_file", { path });
     currentFilePath = path;
@@ -618,6 +625,119 @@ async function refreshRecentList() {
   }
 }
 
+// ---- Find in page ----
+
+let findMatches = [];
+let findIndex = -1;
+
+function openFindBar() {
+  findBar.classList.add("open");
+  findInput.focus();
+  findInput.select();
+  if (findInput.value) runFind();
+}
+
+function closeFindBar() {
+  findBar.classList.remove("open");
+  clearFindHighlights();
+  findMatches = [];
+  findIndex = -1;
+  findCount.textContent = "";
+  findInput.classList.remove("no-results");
+}
+
+function clearFindHighlights() {
+  content.querySelectorAll(".smd-find-highlight").forEach((mark) => {
+    const parent = mark.parentNode;
+    if (parent) {
+      parent.replaceChild(document.createTextNode(mark.textContent), mark);
+      parent.normalize();
+    }
+  });
+}
+
+function runFind() {
+  clearFindHighlights();
+  findMatches = [];
+  findIndex = -1;
+  findInput.classList.remove("no-results");
+
+  const query = findInput.value;
+  if (!query) { findCount.textContent = ""; return; }
+
+  const queryLower = query.toLowerCase();
+
+  // Collect all text nodes up-front to avoid live NodeList issues
+  const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+  const textNodes = [];
+  let node;
+  while ((node = walker.nextNode())) textNodes.push(node);
+
+  for (const textNode of textNodes) {
+    const text = textNode.textContent;
+    const textLower = text.toLowerCase();
+    let offset = 0;
+    const parts = [];
+    let idx;
+    while ((idx = textLower.indexOf(queryLower, offset)) !== -1) {
+      if (idx > offset) parts.push(document.createTextNode(text.slice(offset, idx)));
+      const mark = document.createElement("mark");
+      mark.className = "smd-find-highlight";
+      mark.textContent = text.slice(idx, idx + query.length);
+      parts.push(mark);
+      findMatches.push(mark);
+      offset = idx + query.length;
+    }
+    if (parts.length > 0) {
+      if (offset < text.length) parts.push(document.createTextNode(text.slice(offset)));
+      const parent = textNode.parentNode;
+      parts.forEach((p) => parent.insertBefore(p, textNode));
+      parent.removeChild(textNode);
+    }
+  }
+
+  if (findMatches.length === 0) {
+    findCount.textContent = "No results";
+    findInput.classList.add("no-results");
+    return;
+  }
+
+  findIndex = 0;
+  activateFindMatch(findIndex);
+}
+
+function activateFindMatch(idx) {
+  findMatches.forEach((m, i) => m.classList.toggle("smd-find-active", i === idx));
+  findMatches[idx].scrollIntoView({ block: "center", behavior: "smooth" });
+  findCount.textContent = `${idx + 1} / ${findMatches.length}`;
+}
+
+function findNext() {
+  if (!findMatches.length) return;
+  findIndex = (findIndex + 1) % findMatches.length;
+  activateFindMatch(findIndex);
+}
+
+function findPrev() {
+  if (!findMatches.length) return;
+  findIndex = (findIndex - 1 + findMatches.length) % findMatches.length;
+  activateFindMatch(findIndex);
+}
+
+findInput.addEventListener("input", runFind);
+findInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    e.shiftKey ? findPrev() : findNext();
+  } else if (e.key === "Escape") {
+    e.stopPropagation();
+    closeFindBar();
+  }
+});
+btnFindPrev.addEventListener("click", findPrev);
+btnFindNext.addEventListener("click", findNext);
+btnFindClose.addEventListener("click", closeFindBar);
+
 // ---- Drag and drop ----
 
 document.addEventListener("dragover", (e) => {
@@ -645,6 +765,9 @@ document.addEventListener("keydown", (e) => {
   if (ctrl && e.key === "o") {
     e.preventDefault();
     openFileDialog();
+  } else if (ctrl && e.key === "f") {
+    e.preventDefault();
+    openFindBar();
   } else if (ctrl && (e.key === "=" || e.key === "+")) {
     e.preventDefault();
     zoomIn();
@@ -661,9 +784,10 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     toggleDrawer();
   } else if (e.key === "Escape") {
-    if (themePanelOpen) closeThemePanel();
-    if (recentPanelOpen) closeRecentPanel();
-    if (drawerOpen) closeDrawer();
+    if (findBar.classList.contains("open")) closeFindBar();
+    else if (themePanelOpen) closeThemePanel();
+    else if (recentPanelOpen) closeRecentPanel();
+    else if (drawerOpen) closeDrawer();
   }
 });
 

@@ -785,3 +785,103 @@ body,
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ============================================================
+   Find in page bar
+   ============================================================ */
+
+#find-bar {
+  display: none;
+  position: fixed;
+  top: 48px;
+  right: 20px;
+  z-index: 200;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px var(--shadow);
+  padding: 5px 6px;
+  gap: 4px;
+  align-items: center;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#find-bar.open {
+  display: flex;
+}
+
+#find-input {
+  width: 200px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+#find-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+}
+
+#find-input.no-results {
+  border-color: #d93025;
+  background: rgba(217, 48, 37, 0.08);
+}
+
+#find-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 58px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+#find-bar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  flex-shrink: 0;
+}
+
+#find-bar button:hover {
+  background: var(--btn-hover);
+  color: var(--text);
+}
+
+#find-bar button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Match highlights — fixed colours so they're readable on any theme */
+.smd-find-highlight {
+  background: #ffd500;
+  color: #1a1a1a;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.smd-find-active {
+  background: #ff7b00;
+  color: #1a1a1a;
+  border-radius: 2px;
+  padding: 0 1px;
+  outline: 2px solid #ff7b00;
+  outline-offset: 1px;
+}
