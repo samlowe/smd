@@ -52,6 +52,7 @@ marked.use({
 
 function highlightCodeBlocks() {
   content.querySelectorAll("pre code").forEach((block) => {
+    if (block.classList.contains("language-mermaid")) return;
     hljs.highlightElement(block);
   });
 }
@@ -431,26 +432,65 @@ window.addEventListener("resize", debouncedSaveState);
 
 // ---- File rendering ----
 
-function resolveRelativeImages(basePath) {
-  const dir = basePath.replace(/\\/g, "/").split("/").slice(0, -1).join("/");
+async function resolveRelativeImages(basePath) {
   const { convertFileSrc } = window.__TAURI__.core;
-  content.querySelectorAll("img").forEach((img) => {
+  const images = content.querySelectorAll("img");
+  const promises = Array.from(images).map(async (img) => {
     const src = img.getAttribute("src");
     if (!src) return;
     // Leave data URIs and URLs with a scheme (http, https, asset, …) alone
     if (/^[a-z][a-z0-9+\-.]*:/i.test(src)) return;
-    const absPath = src.startsWith("/") ? src : `${dir}/${src}`;
-    img.src = convertFileSrc(absPath);
+    try {
+      const resolved = await invoke("resolve_relative_path", {
+        baseFile: basePath,
+        relative: src,
+      });
+      if (resolved) img.src = convertFileSrc(resolved);
+    } catch (e) {
+      console.warn("Could not resolve image:", src, e);
+    }
   });
+  await Promise.all(promises);
 }
 
-function showContent(md, filename) {
+// ---- Mermaid diagrams ----
+
+mermaid.initialize({ startOnLoad: false, theme: "default", securityLevel: "loose" });
+
+async function renderMermaidDiagrams() {
+  const blocks = content.querySelectorAll("pre > code.language-mermaid");
+  if (blocks.length === 0) return;
+
+  // Detect light/dark for mermaid theme
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  mermaid.initialize({ startOnLoad: false, theme: isDark ? "dark" : "default", securityLevel: "loose" });
+
+  // Replace <pre><code> with <div class="mermaid">
+  blocks.forEach((block) => {
+    const pre = block.parentElement;
+    const container = document.createElement("div");
+    container.className = "mermaid";
+    container.textContent = block.textContent;
+    pre.replaceWith(container);
+  });
+
+  try {
+    await mermaid.run({ querySelector: ".mermaid" });
+  } catch (e) {
+    console.warn("Mermaid rendering error:", e);
+  }
+}
+
+// ---- Content display ----
+
+async function showContent(md, filename) {
   const { meta, body } = parseFrontmatter(md);
   const fmHtml = meta ? renderFrontmatter(meta) : "";
   const html = fmHtml + marked.parse(body);
   content.innerHTML = html;
-  resolveRelativeImages(filename);
+  await resolveRelativeImages(filename);
   highlightCodeBlocks();
+  await renderMermaidDiagrams();
   contentWrapper.classList.add("active");
   emptyState.classList.add("hidden");
 
@@ -469,7 +509,7 @@ async function openFile(path) {
     const text = await invoke("read_file", { path });
     await invoke("set_current_file", { path });
     currentFilePath = path;
-    showContent(text, path);
+    await showContent(text, path);
 
     // Track in recent files
     invoke("add_recent_file", { path }).catch(() => {});
@@ -737,6 +777,42 @@ findInput.addEventListener("keydown", (e) => {
 btnFindPrev.addEventListener("click", findPrev);
 btnFindNext.addEventListener("click", findNext);
 btnFindClose.addEventListener("click", closeFindBar);
+
+// ---- Link click handling ----
+
+content.addEventListener("click", async (e) => {
+  const link = e.target.closest("a[href]");
+  if (!link) return;
+
+  const href = link.getAttribute("href");
+  if (!href || href.startsWith("#")) return;
+
+  e.preventDefault();
+
+  // External link — open in system browser
+  if (/^[a-z][a-z0-9+\-.]*:/i.test(href)) {
+    try {
+      await invoke("plugin:shell|open", { path: href });
+    } catch (err) {
+      console.warn("Could not open external link:", href, err);
+    }
+    return;
+  }
+
+  // Relative markdown link — open in app
+  const cleanHref = href.split("#")[0].split("?")[0];
+  if (/\.(md|markdown|mdown|mkd|mkdn|mdwn)$/i.test(cleanHref) && currentFilePath) {
+    try {
+      const resolved = await invoke("resolve_relative_path", {
+        baseFile: currentFilePath,
+        relative: cleanHref,
+      });
+      if (resolved) await openFile(resolved);
+    } catch (err) {
+      console.warn("Could not open linked file:", cleanHref, err);
+    }
+  }
+});
 
 // ---- Drag and drop ----
 

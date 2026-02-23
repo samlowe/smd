@@ -169,6 +169,16 @@ fn add_recent_file(state: State<'_, AppState>, path: String) {
 }
 
 #[tauri::command]
+fn resolve_relative_path(base_file: String, relative: String) -> Option<String> {
+    let base = PathBuf::from(base_file);
+    let dir = base.parent()?;
+    let resolved = dir.join(&relative);
+    fs::canonicalize(&resolved)
+        .ok()
+        .and_then(|p| p.to_str().map(String::from))
+}
+
+#[tauri::command]
 fn list_md_files(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     // Use the directory of the open file; fall back to launch cwd
     let dir = state
@@ -225,6 +235,7 @@ pub fn run() {
             get_saved_zoom,
             get_recent_files,
             add_recent_file,
+            resolve_relative_path,
             list_md_files,
         ])
         .setup(move |app| {

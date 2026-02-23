@@ -454,6 +454,25 @@ body {
   color: var(--text-secondary);
 }
 
+/* ---- Mermaid diagrams ---- */
+
+.markdown-body .mermaid {
+  margin-bottom: 1em;
+  text-align: center;
+  overflow-x: auto;
+}
+
+.markdown-body .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-body .mermaid-error {
+  color: var(--text-muted);
+  font-size: 0.875em;
+  font-style: italic;
+}
+
 /* ---- Strikethrough (GFM) ---- */
 
 .markdown-body del {

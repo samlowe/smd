@@ -1,6 +1,6 @@
 {
   "productName": "smd",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "identifier": "io.github.smd",
   "build": {
     "frontendDist": "../ui"
@@ -17,7 +17,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' asset: https: data:"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' blob:; worker-src 'self' blob:; img-src 'self' asset: http://asset.localhost https://asset.localhost https: data: blob:"
     }
   },
   "bundle": {
