@@ -785,7 +785,16 @@ content.addEventListener("click", async (e) => {
   if (!link) return;
 
   const href = link.getAttribute("href");
-  if (!href || href.startsWith("#")) return;
+  if (!href) return;
+
+  // Anchor link — scroll within content-wrapper (default scroll targets <html> which is overflow:hidden)
+  if (href.startsWith("#")) {
+    e.preventDefault();
+    const id = decodeURIComponent(href.slice(1));
+    const target = id && content.querySelector(`[id="${CSS.escape(id)}"]`);
+    if (target) target.scrollIntoView({ block: "start", behavior: "smooth" });
+    return;
+  }
 
   e.preventDefault();
 

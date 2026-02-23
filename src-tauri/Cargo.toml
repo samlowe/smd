@@ -1,6 +1,6 @@
 [package]
 name = "smd"
-version = "0.3.6"
+version = "0.3.7"
 description = "Simple Markdown Viewer"
 edition = "2021"
 
@@ -16,7 +16,7 @@ path = "src/main.rs"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"
 serde = { version = "1", features = ["derive"] }
