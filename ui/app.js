@@ -923,6 +923,12 @@ async function init() {
   if (initialFile) {
     await openFile(initialFile);
   }
+
+  // If launched with a folder argument, auto-open the file drawer
+  const initialFolder = await invoke("get_initial_folder");
+  if (initialFolder) {
+    toggleDrawer();
+  }
 }
 
 init();
