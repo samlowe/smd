@@ -20,6 +20,7 @@ struct PersistedState {
 
 pub struct AppState {
     pub current_file: Mutex<Option<PathBuf>>,
+    pub initial_folder: Option<PathBuf>,
     pub config_dir: PathBuf,
 }
 
@@ -68,6 +69,14 @@ fn get_initial_file(state: State<AppState>) -> Option<String> {
         .current_file
         .lock()
         .unwrap()
+        .as_ref()
+        .and_then(|p| p.to_str().map(String::from))
+}
+
+#[tauri::command]
+fn get_initial_folder(state: State<AppState>) -> Option<String> {
+    state
+        .initial_folder
         .as_ref()
         .and_then(|p| p.to_str().map(String::from))
 }
@@ -180,13 +189,14 @@ fn resolve_relative_path(base_file: String, relative: String) -> Option<String> 
 
 #[tauri::command]
 fn list_md_files(state: State<'_, AppState>) -> Result<Vec<String>, String> {
-    // Use the directory of the open file; fall back to launch cwd
+    // Use the directory of the open file; fall back to initial folder, then launch cwd
     let dir = state
         .current_file
         .lock()
         .unwrap()
         .as_ref()
         .and_then(|p| p.parent().map(PathBuf::from))
+        .or_else(|| state.initial_folder.clone())
         .or_else(|| std::env::current_dir().ok())
         .ok_or_else(|| "Cannot determine directory".to_string())?;
     let mut files: Vec<String> = fs::read_dir(&dir)
@@ -211,10 +221,17 @@ fn list_md_files(state: State<'_, AppState>) -> Result<Vec<String>, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let file_arg: Option<PathBuf> = std::env::args()
+    let cli_arg: Option<PathBuf> = std::env::args()
         .nth(1)
         .map(PathBuf::from)
         .map(|p| fs::canonicalize(&p).unwrap_or(p));
+
+    // Determine whether the argument is a directory or a file
+    let (file_arg, folder_arg) = match cli_arg {
+        Some(ref p) if p.is_dir() => (None, Some(p.clone())),
+        other => (other, None),
+    };
+
     let config_dir = get_config_dir();
     let saved = load_persisted(&config_dir);
 
@@ -223,11 +240,13 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .manage(AppState {
             current_file: Mutex::new(file_arg),
+            initial_folder: folder_arg,
             config_dir,
         })
         .invoke_handler(tauri::generate_handler![
             read_file,
             get_initial_file,
+            get_initial_folder,
             set_current_file,
             open_file_dialog,
             open_theme_file_dialog,
