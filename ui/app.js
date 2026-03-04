@@ -506,19 +506,23 @@ async function showContent(md, filename) {
   const fmHtml = meta ? renderFrontmatter(meta) : "";
   const html = fmHtml + marked.parse(body);
   content.innerHTML = html;
-  await resolveRelativeImages(filename);
-  highlightCodeBlocks();
-  await renderMermaidDiagrams();
-  contentWrapper.classList.add("active");
-  emptyState.classList.add("hidden");
 
   // Show just the filename in the toolbar
   const name = filename.split("/").pop().split("\\").pop();
   filenameEl.textContent = name;
   filenameEl.title = filename;
-
-  // Update window title
   document.title = `${name} — smd`;
+
+  // Make content visible immediately so the user sees raw text fast
+  contentWrapper.classList.add("active");
+  emptyState.classList.add("hidden");
+
+  // Resolve images, highlight code, and render diagrams after paint
+  requestAnimationFrame(() => {
+    resolveRelativeImages(filename);
+    highlightCodeBlocks();
+    renderMermaidDiagrams();
+  });
 }
 
 async function openFile(path) {
