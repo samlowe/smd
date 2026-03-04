@@ -923,27 +923,27 @@ btnRecent.addEventListener("click", toggleRecentPanel);
 // ---- Init: load file from CLI arg, restore zoom ----
 
 async function init() {
+  // Fetch all startup state in parallel (single IPC round-trip)
+  const [savedZoom, initialFile, initialFolder] = await Promise.all([
+    invoke("get_saved_zoom").catch(() => null),
+    invoke("get_initial_file"),
+    invoke("get_initial_folder"),
+  ]);
+
   // Restore saved zoom
-  try {
-    const savedZoom = await invoke("get_saved_zoom");
-    if (savedZoom !== null && savedZoom >= ZOOM_MIN && savedZoom <= ZOOM_MAX) {
-      currentZoom = savedZoom;
-      content.style.transform = `scale(${currentZoom / 100})`;
-      content.style.transformOrigin = "top center";
-      zoomLevelEl.textContent = `${currentZoom}%`;
-    }
-  } catch (err) {
-    // Ignore — first run or corrupted state
+  if (savedZoom !== null && savedZoom >= ZOOM_MIN && savedZoom <= ZOOM_MAX) {
+    currentZoom = savedZoom;
+    content.style.transform = `scale(${currentZoom / 100})`;
+    content.style.transformOrigin = "top center";
+    zoomLevelEl.textContent = `${currentZoom}%`;
   }
 
   // Load initial file from CLI arg
-  const initialFile = await invoke("get_initial_file");
   if (initialFile) {
     await openFile(initialFile);
   }
 
   // If launched with a folder argument, auto-open the file drawer
-  const initialFolder = await invoke("get_initial_folder");
   if (initialFolder) {
     toggleDrawer();
   }
