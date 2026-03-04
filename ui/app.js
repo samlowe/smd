@@ -453,13 +453,31 @@ async function resolveRelativeImages(basePath) {
   await Promise.all(promises);
 }
 
-// ---- Mermaid diagrams ----
+// ---- Mermaid diagrams (lazy-loaded) ----
 
-mermaid.initialize({ startOnLoad: false, theme: "default", securityLevel: "loose" });
+let mermaidLoaded = false;
+
+function loadMermaid() {
+  if (mermaidLoaded) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "mermaid.min.js";
+    script.onload = () => {
+      mermaid.initialize({ startOnLoad: false, theme: "default", securityLevel: "loose" });
+      mermaidLoaded = true;
+      resolve();
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
 
 async function renderMermaidDiagrams() {
   const blocks = content.querySelectorAll("pre > code.language-mermaid");
   if (blocks.length === 0) return;
+
+  // Load mermaid on first use
+  await loadMermaid();
 
   // Detect light/dark for mermaid theme
   const isDark = document.documentElement.getAttribute("data-theme") === "dark";
