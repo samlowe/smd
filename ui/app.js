@@ -351,11 +351,18 @@ const ThemeManager = (() => {
 // ---- Theme Panel Toggle ----
 
 let themePanelOpen = false;
+let themePickerBuilt = false;
 
 function toggleThemePanel() {
   themePanelOpen = !themePanelOpen;
   themePanel.classList.toggle("open", themePanelOpen);
-  if (themePanelOpen) closeRecentPanel();
+  if (themePanelOpen) {
+    if (!themePickerBuilt) {
+      ThemeManager.buildPicker();
+      themePickerBuilt = true;
+    }
+    closeRecentPanel();
+  }
 }
 
 function closeThemePanel() {
@@ -375,7 +382,6 @@ document.addEventListener("mousedown", (e) => {
 
 // ---- Initialize Theme ----
 
-ThemeManager.buildPicker();
 ThemeManager.apply(ThemeManager.getStoredThemeId() || ThemeManager.getDefaultThemeId());
 ThemeManager.applyFont(ThemeManager.getStoredFont());
 
