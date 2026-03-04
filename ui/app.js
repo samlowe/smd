@@ -43,13 +43,6 @@ const btnFindPrev = document.getElementById("find-prev");
 const btnFindNext = document.getElementById("find-next");
 const btnFindClose = document.getElementById("find-close");
 
-// ---- Markdown setup ----
-
-marked.use({
-  gfm: true,
-  breaks: false,
-});
-
 function highlightCodeBlocks() {
   content.querySelectorAll("pre code").forEach((block) => {
     if (block.classList.contains("language-mermaid")) return;
@@ -510,8 +503,8 @@ async function renderMermaidDiagrams() {
 async function showContent(md, filename) {
   const { meta, body } = parseFrontmatter(md);
   const fmHtml = meta ? renderFrontmatter(meta) : "";
-  const html = fmHtml + marked.parse(body);
-  content.innerHTML = html;
+  const { html: bodyHtml } = await invoke("render_markdown", { text: body });
+  content.innerHTML = fmHtml + bodyHtml;
 
   // Show just the filename in the toolbar
   const name = filename.split("/").pop().split("\\").pop();
