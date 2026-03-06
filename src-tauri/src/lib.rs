@@ -4,7 +4,7 @@ use std::sync::Mutex;
 
 use serde::Serialize;
 use smd_core::files;
-use smd_core::persistence::{self, PersistedState, MAX_RECENT_FILES};
+use smd_core::persistence::{self, MAX_RECENT_FILES};
 use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
 
