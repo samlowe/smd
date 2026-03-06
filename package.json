@@ -1,6 +1,6 @@
 {
   "name": "smd",
-  "version": "0.3.13",
+  "version": "0.3.14",
   "description": "Simple Markdown Viewer",
   "private": true,
   "scripts": {
