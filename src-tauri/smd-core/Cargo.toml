@@ -1,6 +1,6 @@
 [package]
 name = "smd-core"
-version = "0.3.14"
+version = "0.3.15"
 edition = "2021"
 description = "Core logic for smd (Simple Markdown Viewer)"
 

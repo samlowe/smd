@@ -693,3 +693,8 @@ const SmdThemes = (() => {
     validate,
   };
 })();
+
+// Export for Node.js testing; no-op in browser
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = SmdThemes;
+}
