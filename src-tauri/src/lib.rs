@@ -156,10 +156,70 @@ fn render_markdown(text: String) -> RenderedMarkdown {
     }
 }
 
+// ---- CLI help ----
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+fn print_help() {
+    println!(
+        r#"
+           _____ __  __ _____
+          / ____|  \/  |  __ \
+         | (___ | \  / | |  | |
+          \___ \| |\/| | |  | |
+          ____) | |  | | |__| |
+         |_____/|_|  |_|_____/
+
+  smd — Simple Markdown Viewer  v{}
+
+USAGE:
+    smd [OPTIONS] [FILE|FOLDER]
+
+ARGS:
+    FILE      Open a markdown file directly
+    FOLDER    Open a folder in the file browser
+
+OPTIONS:
+    -h, --help       Print this help message and exit
+    -v, --version    Print the version and exit
+
+EXAMPLES:
+    smd                       Launch with an empty view
+    smd README.md             Open a specific markdown file
+    smd ./docs                Browse markdown files in a folder
+
+SUPPORTED FORMATS:
+    Markdown files (.md, .markdown, .mdown, .mkd, .mkdn, .mdx, .txt)
+
+FEATURES:
+    • GitHub Flavored Markdown with syntax highlighting
+    • 15 built-in color themes + custom theme support
+    • Mermaid diagram rendering
+    • YAML frontmatter display
+    • Find-in-page, zoom controls, recent files
+"#,
+        VERSION
+    );
+}
+
 // ---- Entry point ----
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    if let Some(arg) = std::env::args().nth(1) {
+        match arg.as_str() {
+            "-h" | "--help" => {
+                print_help();
+                return;
+            }
+            "-v" | "--version" => {
+                println!("smd {}", VERSION);
+                return;
+            }
+            _ => {}
+        }
+    }
+
     let cli_arg: Option<PathBuf> = std::env::args()
         .nth(1)
         .map(PathBuf::from)
