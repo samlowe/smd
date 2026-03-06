@@ -2,6 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+use pulldown_cmark::{html, Options, Parser};
 use serde::{Deserialize, Serialize};
 use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
@@ -217,6 +218,32 @@ fn list_md_files(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     Ok(files)
 }
 
+// ---- Markdown rendering ----
+
+#[derive(Serialize)]
+struct RenderedMarkdown {
+    html: String,
+}
+
+fn markdown_to_html(md: &str) -> String {
+    let mut opts = Options::empty();
+    opts.insert(Options::ENABLE_TABLES);
+    opts.insert(Options::ENABLE_STRIKETHROUGH);
+    opts.insert(Options::ENABLE_TASKLISTS);
+    opts.insert(Options::ENABLE_FOOTNOTES);
+
+    let parser = Parser::new_ext(md, opts);
+    let mut html_output = String::with_capacity(md.len() * 2);
+    html::push_html(&mut html_output, parser);
+    html_output
+}
+
+#[tauri::command]
+fn render_markdown(text: String) -> RenderedMarkdown {
+    let html = markdown_to_html(&text);
+    RenderedMarkdown { html }
+}
+
 // ---- Entry point ----
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -256,6 +283,7 @@ pub fn run() {
             add_recent_file,
             resolve_relative_path,
             list_md_files,
+            render_markdown,
         ])
         .setup(move |app| {
             let window = app.get_webview_window("main").unwrap();
