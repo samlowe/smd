@@ -5,3 +5,4 @@ dist/
 *.swo
 *~
 .DS_Store
+.claude/backups/
