@@ -3,6 +3,9 @@
    Main application logic
    ============================================================ */
 
+// Pure utility functions are loaded from utils.js (parseFrontmatter,
+// parseSimpleYaml, escapeHtml, basename, dirname, renderFrontmatter, stripQuotes).
+
 const { invoke } = window.__TAURI__.core;
 
 // ---- State ----
@@ -36,6 +39,10 @@ const btnRecent = document.getElementById("btn-recent");
 const recentPanel = document.getElementById("recent-panel");
 const recentList = document.getElementById("recent-list");
 const recentEmpty = document.getElementById("recent-empty");
+const btnAbout = document.getElementById("btn-about");
+const aboutOverlay = document.getElementById("about-overlay");
+const aboutVersion = document.getElementById("about-version");
+const aboutClose = document.getElementById("about-close");
 const findBar = document.getElementById("find-bar");
 const findInput = document.getElementById("find-input");
 const findCount = document.getElementById("find-count");
@@ -48,117 +55,6 @@ function highlightCodeBlocks() {
     if (block.classList.contains("language-mermaid")) return;
     hljs.highlightElement(block);
   });
-}
-
-// ---- YAML Frontmatter ----
-
-/**
- * Extract YAML frontmatter from markdown text.
- * Returns { meta: object|null, body: string }.
- */
-function parseFrontmatter(text) {
-  const match = text.match(/^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/);
-  if (!match) return { meta: null, body: text };
-
-  const yamlBlock = match[1];
-  const body = text.slice(match[0].length);
-  const meta = parseSimpleYaml(yamlBlock);
-  return { meta, body };
-}
-
-/**
- * Lightweight YAML parser for frontmatter.
- * Handles scalars, quoted strings, simple lists (both inline [...] and
- * indented "- item" style), and multi-line folded/literal strings.
- */
-function parseSimpleYaml(yaml) {
-  const result = {};
-  const lines = yaml.split(/\r?\n/);
-  let i = 0;
-
-  while (i < lines.length) {
-    const line = lines[i];
-
-    // Skip blank lines and comments
-    if (/^\s*$/.test(line) || /^\s*#/.test(line)) { i++; continue; }
-
-    // Match top-level key: value
-    const kvMatch = line.match(/^([A-Za-z_][\w.-]*)\s*:\s*(.*)/);
-    if (!kvMatch) { i++; continue; }
-
-    const key = kvMatch[1];
-    let rawVal = kvMatch[2].trim();
-
-    // Inline list: [a, b, c]
-    if (rawVal.startsWith("[") && rawVal.endsWith("]")) {
-      result[key] = rawVal.slice(1, -1).split(",").map((s) => stripQuotes(s.trim())).filter(Boolean);
-      i++; continue;
-    }
-
-    // Multi-line block scalar: | or >
-    if (rawVal === "|" || rawVal === ">") {
-      const fold = rawVal === ">";
-      let block = "";
-      i++;
-      while (i < lines.length && /^[ \t]/.test(lines[i])) {
-        block += (block && fold ? " " : (block ? "\n" : "")) + lines[i].replace(/^[ \t]+/, "");
-        i++;
-      }
-      result[key] = block;
-      continue;
-    }
-
-    // Indented list items on following lines
-    if (rawVal === "") {
-      // Check if next lines are list items
-      const items = [];
-      let j = i + 1;
-      while (j < lines.length && /^[ \t]+- /.test(lines[j])) {
-        items.push(stripQuotes(lines[j].replace(/^[ \t]+- /, "").trim()));
-        j++;
-      }
-      if (items.length > 0) {
-        result[key] = items;
-        i = j; continue;
-      }
-      // Otherwise it's an empty value
-      result[key] = "";
-      i++; continue;
-    }
-
-    // Plain scalar or quoted string
-    result[key] = stripQuotes(rawVal);
-    i++;
-  }
-
-  return result;
-}
-
-function stripQuotes(s) {
-  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
-    return s.slice(1, -1);
-  }
-  // Handle YAML booleans
-  if (s === "true") return true;
-  if (s === "false") return false;
-  return s;
-}
-
-/**
- * Render frontmatter metadata as a styled HTML card.
- */
-function renderFrontmatter(meta) {
-  const rows = Object.entries(meta).map(([key, val]) => {
-    const displayVal = Array.isArray(val)
-      ? val.map((v) => `<span class="fm-tag">${escapeHtml(String(v))}</span>`).join(" ")
-      : escapeHtml(String(val));
-    return `<tr><td class="fm-key">${escapeHtml(key)}</td><td class="fm-val">${displayVal}</td></tr>`;
-  });
-  return `<div class="frontmatter"><table>${rows.join("")}</table></div>`;
-}
-
-function escapeHtml(s) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 // ---- Theme Manager ----
@@ -507,7 +403,7 @@ async function showContent(md, filename) {
   content.innerHTML = fmHtml + bodyHtml;
 
   // Show just the filename in the toolbar
-  const name = filename.split("/").pop().split("\\").pop();
+  const name = basename(filename);
   filenameEl.textContent = name;
   filenameEl.title = filename;
   document.title = `${name} — smd`;
@@ -582,7 +478,7 @@ async function refreshFileList() {
     for (const filePath of files) {
       const btn = document.createElement("button");
       btn.className = "drawer-file";
-      const name = filePath.split("/").pop().split("\\").pop();
+      const name = basename(filePath);
 
       // Small file icon
       const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -660,11 +556,10 @@ async function refreshRecentList() {
 
       const name = document.createElement("span");
       name.className = "recent-item-name";
-      name.textContent = filePath.split("/").pop().split("\\").pop();
+      name.textContent = basename(filePath);
 
       // Show parent directory for context
-      const parts = filePath.replace(/\\/g, "/").split("/");
-      const dir = parts.length > 1 ? parts.slice(0, -1).join("/") : "";
+      const dir = dirname(filePath);
 
       const pathEl = document.createElement("span");
       pathEl.className = "recent-item-path";
@@ -799,6 +694,29 @@ btnFindPrev.addEventListener("click", findPrev);
 btnFindNext.addEventListener("click", findNext);
 btnFindClose.addEventListener("click", closeFindBar);
 
+// ---- About modal ----
+
+let aboutOpen = false;
+
+async function openAboutModal() {
+  if (!aboutVersion.textContent) {
+    const version = await invoke("get_app_version");
+    aboutVersion.textContent = `v${version}`;
+  }
+  aboutOpen = true;
+  aboutOverlay.classList.add("open");
+}
+
+function closeAboutModal() {
+  aboutOpen = false;
+  aboutOverlay.classList.remove("open");
+}
+
+aboutClose.addEventListener("click", closeAboutModal);
+aboutOverlay.addEventListener("mousedown", (e) => {
+  if (e.target === aboutOverlay) closeAboutModal();
+});
+
 // ---- Link click handling ----
 
 content.addEventListener("click", async (e) => {
@@ -890,7 +808,8 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     toggleDrawer();
   } else if (e.key === "Escape") {
-    if (findBar.classList.contains("open")) closeFindBar();
+    if (aboutOpen) closeAboutModal();
+    else if (findBar.classList.contains("open")) closeFindBar();
     else if (themePanelOpen) closeThemePanel();
     else if (recentPanelOpen) closeRecentPanel();
     else if (drawerOpen) closeDrawer();
@@ -922,6 +841,7 @@ btnTheme.addEventListener("click", toggleThemePanel);
 btnImportTheme.addEventListener("click", ThemeManager.importCustomTheme);
 btnDrawer.addEventListener("click", toggleDrawer);
 btnRecent.addEventListener("click", toggleRecentPanel);
+btnAbout.addEventListener("click", openAboutModal);
 
 // ---- Init: load file from CLI arg, restore zoom ----
 

@@ -1,6 +1,6 @@
 {
   "productName": "smd",
-  "version": "0.3.13",
+  "version": "0.3.16",
   "identifier": "io.github.smd",
   "build": {
     "frontendDist": "../ui"

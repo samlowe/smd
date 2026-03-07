@@ -1,6 +1,9 @@
+[workspace]
+members = [".", "smd-core"]
+
 [package]
 name = "smd"
-version = "0.3.13"
+version = "0.3.16"
 description = "Simple Markdown Viewer"
 edition = "2021"
 
@@ -21,4 +24,4 @@ tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-pulldown-cmark = { version = "0.12", default-features = false, features = ["html"] }
+smd-core = { path = "smd-core" }

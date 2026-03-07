@@ -2,20 +2,11 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use pulldown_cmark::{html, Options, Parser};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+use smd_core::files;
+use smd_core::persistence::{self, MAX_RECENT_FILES};
 use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
-
-// ---- Persisted state ----
-
-#[derive(Serialize, Deserialize, Default)]
-struct PersistedState {
-    width: Option<f64>,
-    height: Option<f64>,
-    zoom: Option<u32>,
-    recent_files: Option<Vec<String>>,
-}
 
 // ---- App state ----
 
@@ -23,38 +14,6 @@ pub struct AppState {
     pub current_file: Mutex<Option<PathBuf>>,
     pub initial_folder: Option<PathBuf>,
     pub config_dir: PathBuf,
-}
-
-// ---- Config helpers ----
-
-fn get_config_dir() -> PathBuf {
-    if let Ok(dir) = std::env::var("XDG_CONFIG_HOME") {
-        PathBuf::from(dir).join("smd")
-    } else if let Ok(home) = std::env::var("HOME") {
-        PathBuf::from(home).join(".config").join("smd")
-    } else if let Ok(appdata) = std::env::var("APPDATA") {
-        PathBuf::from(appdata).join("smd")
-    } else {
-        PathBuf::from(".smd")
-    }
-}
-
-fn state_path(config_dir: &PathBuf) -> PathBuf {
-    config_dir.join("state.json")
-}
-
-fn load_persisted(config_dir: &PathBuf) -> PersistedState {
-    fs::read_to_string(state_path(config_dir))
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
-}
-
-fn save_persisted(config_dir: &PathBuf, state: &PersistedState) {
-    let _ = fs::create_dir_all(config_dir);
-    if let Ok(json) = serde_json::to_string_pretty(state) {
-        let _ = fs::write(state_path(config_dir), json);
-    }
 }
 
 // ---- Commands ----
@@ -87,15 +46,12 @@ fn set_current_file(state: State<AppState>, path: String) {
     *state.current_file.lock().unwrap() = Some(PathBuf::from(path));
 }
 
-#[tauri::command]
-async fn open_file_dialog(app: tauri::AppHandle) -> Option<String> {
+/// Open a native file picker with the given filter and return the selected path.
+async fn pick_file(app: &tauri::AppHandle, label: &str, extensions: &[&str]) -> Option<String> {
     let (sender, receiver) = std::sync::mpsc::channel();
     app.dialog()
         .file()
-        .add_filter(
-            "Markdown",
-            &["md", "markdown", "mdown", "mkd", "mkdn", "mdwn", "txt"],
-        )
+        .add_filter(label, extensions)
         .pick_file(move |file_response| {
             let _ = sender.send(file_response);
         });
@@ -109,21 +65,16 @@ async fn open_file_dialog(app: tauri::AppHandle) -> Option<String> {
 }
 
 #[tauri::command]
-async fn open_theme_file_dialog(app: tauri::AppHandle) -> Option<String> {
-    let (sender, receiver) = std::sync::mpsc::channel();
-    app.dialog()
-        .file()
-        .add_filter("Theme", &["json"])
-        .pick_file(move |file_response| {
-            let _ = sender.send(file_response);
-        });
+async fn open_file_dialog(app: tauri::AppHandle) -> Option<String> {
+    // Include "txt" alongside standard markdown extensions in the dialog
+    let mut exts: Vec<&str> = files::MARKDOWN_EXTENSIONS.to_vec();
+    exts.push("txt");
+    pick_file(&app, "Markdown", &exts).await
+}
 
-    tauri::async_runtime::spawn_blocking(move || receiver.recv().ok().flatten())
-        .await
-        .ok()
-        .flatten()
-        .and_then(|f| f.into_path().ok())
-        .and_then(|p| p.to_str().map(String::from))
+#[tauri::command]
+async fn open_theme_file_dialog(app: tauri::AppHandle) -> Option<String> {
+    pick_file(&app, "Theme", &["json"]).await
 }
 
 #[tauri::command]
@@ -138,59 +89,47 @@ fn save_window_state(
     let size = window.outer_size().map_err(|e| e.to_string())?;
     let scale = window.scale_factor().map_err(|e| e.to_string())?;
 
-    // Load existing state to preserve recent_files
-    let mut persisted = load_persisted(&state.config_dir);
+    let mut persisted = persistence::load(&state.config_dir);
     persisted.width = Some(size.width as f64 / scale);
     persisted.height = Some(size.height as f64 / scale);
     persisted.zoom = Some(zoom);
-    save_persisted(&state.config_dir, &persisted);
+    persistence::save(&state.config_dir, &persisted);
     Ok(())
 }
 
 #[tauri::command]
 fn get_saved_zoom(state: State<'_, AppState>) -> Option<u32> {
-    load_persisted(&state.config_dir).zoom
+    persistence::load(&state.config_dir).zoom
 }
 
 #[tauri::command]
 fn get_recent_files(state: State<'_, AppState>) -> Vec<String> {
-    load_persisted(&state.config_dir)
+    persistence::load(&state.config_dir)
         .recent_files
         .unwrap_or_default()
 }
 
 #[tauri::command]
 fn add_recent_file(state: State<'_, AppState>, path: String) {
-    // Always store the fully resolved path so recents work from any cwd
     let resolved = fs::canonicalize(&path)
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or(path);
 
-    let mut persisted = load_persisted(&state.config_dir);
+    let mut persisted = persistence::load(&state.config_dir);
     let mut recents = persisted.recent_files.unwrap_or_default();
-
-    // Remove if already present, then push to front
-    recents.retain(|p| p != &resolved);
-    recents.insert(0, resolved);
-    recents.truncate(10);
-
+    persistence::update_recent_list(&mut recents, resolved, MAX_RECENT_FILES);
     persisted.recent_files = Some(recents);
-    save_persisted(&state.config_dir, &persisted);
+    persistence::save(&state.config_dir, &persisted);
 }
 
 #[tauri::command]
 fn resolve_relative_path(base_file: String, relative: String) -> Option<String> {
-    let base = PathBuf::from(base_file);
-    let dir = base.parent()?;
-    let resolved = dir.join(&relative);
-    fs::canonicalize(&resolved)
-        .ok()
+    files::resolve_relative(&PathBuf::from(base_file), &relative)
         .and_then(|p| p.to_str().map(String::from))
 }
 
 #[tauri::command]
 fn list_md_files(state: State<'_, AppState>) -> Result<Vec<String>, String> {
-    // Use the directory of the open file; fall back to initial folder, then launch cwd
     let dir = state
         .current_file
         .lock()
@@ -200,22 +139,7 @@ fn list_md_files(state: State<'_, AppState>) -> Result<Vec<String>, String> {
         .or_else(|| state.initial_folder.clone())
         .or_else(|| std::env::current_dir().ok())
         .ok_or_else(|| "Cannot determine directory".to_string())?;
-    let mut files: Vec<String> = fs::read_dir(&dir)
-        .map_err(|e| e.to_string())?
-        .filter_map(|entry| {
-            let entry = entry.ok()?;
-            let path = entry.path();
-            if path.is_file() {
-                let ext = path.extension()?.to_str()?;
-                if ext.eq_ignore_ascii_case("md") || ext.eq_ignore_ascii_case("markdown") {
-                    return path.to_str().map(String::from);
-                }
-            }
-            None
-        })
-        .collect();
-    files.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
-    Ok(files)
+    files::list_markdown_files(&dir)
 }
 
 // ---- Markdown rendering ----
@@ -225,42 +149,94 @@ struct RenderedMarkdown {
     html: String,
 }
 
-fn markdown_to_html(md: &str) -> String {
-    let mut opts = Options::empty();
-    opts.insert(Options::ENABLE_TABLES);
-    opts.insert(Options::ENABLE_STRIKETHROUGH);
-    opts.insert(Options::ENABLE_TASKLISTS);
-    opts.insert(Options::ENABLE_FOOTNOTES);
-
-    let parser = Parser::new_ext(md, opts);
-    let mut html_output = String::with_capacity(md.len() * 2);
-    html::push_html(&mut html_output, parser);
-    html_output
-}
-
 #[tauri::command]
 fn render_markdown(text: String) -> RenderedMarkdown {
-    let html = markdown_to_html(&text);
-    RenderedMarkdown { html }
+    RenderedMarkdown {
+        html: smd_core::markdown::to_html(&text),
+    }
+}
+
+// ---- App info ----
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[tauri::command]
+fn get_app_version() -> String {
+    VERSION.to_string()
+}
+
+fn print_help() {
+    println!(
+        r#"
+           _____ __  __ _____
+          / ____|  \/  |  __ \
+         | (___ | \  / | |  | |
+          \___ \| |\/| | |  | |
+          ____) | |  | | |__| |
+         |_____/|_|  |_|_____/
+
+  smd — Simple Markdown Viewer  v{}
+
+USAGE:
+    smd [OPTIONS] [FILE|FOLDER]
+
+ARGS:
+    FILE      Open a markdown file directly
+    FOLDER    Open a folder in the file browser
+
+OPTIONS:
+    -h, --help       Print this help message and exit
+    -v, --version    Print the version and exit
+
+EXAMPLES:
+    smd                       Launch with an empty view
+    smd README.md             Open a specific markdown file
+    smd ./docs                Browse markdown files in a folder
+
+SUPPORTED FORMATS:
+    Markdown files (.md, .markdown, .mdown, .mkd, .mkdn, .mdx, .txt)
+
+FEATURES:
+    • GitHub Flavored Markdown with syntax highlighting
+    • 15 built-in color themes + custom theme support
+    • Mermaid diagram rendering
+    • YAML frontmatter display
+    • Find-in-page, zoom controls, recent files
+"#,
+        VERSION
+    );
 }
 
 // ---- Entry point ----
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    if let Some(arg) = std::env::args().nth(1) {
+        match arg.as_str() {
+            "-h" | "--help" => {
+                print_help();
+                return;
+            }
+            "-v" | "--version" => {
+                println!("smd {}", VERSION);
+                return;
+            }
+            _ => {}
+        }
+    }
+
     let cli_arg: Option<PathBuf> = std::env::args()
         .nth(1)
         .map(PathBuf::from)
         .map(|p| fs::canonicalize(&p).unwrap_or(p));
 
-    // Determine whether the argument is a directory or a file
     let (file_arg, folder_arg) = match cli_arg {
         Some(ref p) if p.is_dir() => (None, Some(p.clone())),
         other => (other, None),
     };
 
-    let config_dir = get_config_dir();
-    let saved = load_persisted(&config_dir);
+    let config_dir = persistence::get_config_dir();
+    let saved = persistence::load(&config_dir);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -284,12 +260,12 @@ pub fn run() {
             resolve_relative_path,
             list_md_files,
             render_markdown,
+            get_app_version,
         ])
         .setup(move |app| {
             let window = app.get_webview_window("main").unwrap();
             window.set_title("smd").unwrap();
 
-            // Restore saved window size
             if let (Some(w), Some(h)) = (saved.width, saved.height) {
                 let _ = window.set_size(tauri::LogicalSize::new(w, h));
             }
