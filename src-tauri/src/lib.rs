@@ -156,9 +156,14 @@ fn render_markdown(text: String) -> RenderedMarkdown {
     }
 }
 
-// ---- CLI help ----
+// ---- App info ----
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[tauri::command]
+fn get_app_version() -> String {
+    VERSION.to_string()
+}
 
 fn print_help() {
     println!(
@@ -255,6 +260,7 @@ pub fn run() {
             resolve_relative_path,
             list_md_files,
             render_markdown,
+            get_app_version,
         ])
         .setup(move |app| {
             let window = app.get_webview_window("main").unwrap();

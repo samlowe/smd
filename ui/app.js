@@ -39,6 +39,10 @@ const btnRecent = document.getElementById("btn-recent");
 const recentPanel = document.getElementById("recent-panel");
 const recentList = document.getElementById("recent-list");
 const recentEmpty = document.getElementById("recent-empty");
+const btnAbout = document.getElementById("btn-about");
+const aboutOverlay = document.getElementById("about-overlay");
+const aboutVersion = document.getElementById("about-version");
+const aboutClose = document.getElementById("about-close");
 const findBar = document.getElementById("find-bar");
 const findInput = document.getElementById("find-input");
 const findCount = document.getElementById("find-count");
@@ -690,6 +694,29 @@ btnFindPrev.addEventListener("click", findPrev);
 btnFindNext.addEventListener("click", findNext);
 btnFindClose.addEventListener("click", closeFindBar);
 
+// ---- About modal ----
+
+let aboutOpen = false;
+
+async function openAboutModal() {
+  if (!aboutVersion.textContent) {
+    const version = await invoke("get_app_version");
+    aboutVersion.textContent = `v${version}`;
+  }
+  aboutOpen = true;
+  aboutOverlay.classList.add("open");
+}
+
+function closeAboutModal() {
+  aboutOpen = false;
+  aboutOverlay.classList.remove("open");
+}
+
+aboutClose.addEventListener("click", closeAboutModal);
+aboutOverlay.addEventListener("mousedown", (e) => {
+  if (e.target === aboutOverlay) closeAboutModal();
+});
+
 // ---- Link click handling ----
 
 content.addEventListener("click", async (e) => {
@@ -781,7 +808,8 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     toggleDrawer();
   } else if (e.key === "Escape") {
-    if (findBar.classList.contains("open")) closeFindBar();
+    if (aboutOpen) closeAboutModal();
+    else if (findBar.classList.contains("open")) closeFindBar();
     else if (themePanelOpen) closeThemePanel();
     else if (recentPanelOpen) closeRecentPanel();
     else if (drawerOpen) closeDrawer();
@@ -813,6 +841,7 @@ btnTheme.addEventListener("click", toggleThemePanel);
 btnImportTheme.addEventListener("click", ThemeManager.importCustomTheme);
 btnDrawer.addEventListener("click", toggleDrawer);
 btnRecent.addEventListener("click", toggleRecentPanel);
+btnAbout.addEventListener("click", openAboutModal);
 
 // ---- Init: load file from CLI arg, restore zoom ----
 
