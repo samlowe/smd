@@ -3,7 +3,7 @@ members = [".", "smd-core"]
 
 [package]
 name = "smd"
-version = "0.3.15"
+version = "0.3.16"
 description = "Simple Markdown Viewer"
 edition = "2021"
 
