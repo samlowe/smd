@@ -14,6 +14,7 @@ pub struct AppState {
     pub current_file: Mutex<Option<PathBuf>>,
     pub initial_folder: Option<PathBuf>,
     pub config_dir: PathBuf,
+    pub persisted: Mutex<persistence::PersistedState>,
 }
 
 // ---- Commands ----
@@ -89,7 +90,7 @@ fn save_window_state(
     let size = window.outer_size().map_err(|e| e.to_string())?;
     let scale = window.scale_factor().map_err(|e| e.to_string())?;
 
-    let mut persisted = persistence::load(&state.config_dir);
+    let mut persisted = state.persisted.lock().unwrap();
     persisted.width = Some(size.width as f64 / scale);
     persisted.height = Some(size.height as f64 / scale);
     persisted.zoom = Some(zoom);
@@ -99,13 +100,17 @@ fn save_window_state(
 
 #[tauri::command]
 fn get_saved_zoom(state: State<'_, AppState>) -> Option<u32> {
-    persistence::load(&state.config_dir).zoom
+    state.persisted.lock().unwrap().zoom
 }
 
 #[tauri::command]
 fn get_recent_files(state: State<'_, AppState>) -> Vec<String> {
-    persistence::load(&state.config_dir)
+    state
+        .persisted
+        .lock()
+        .unwrap()
         .recent_files
+        .clone()
         .unwrap_or_default()
 }
 
@@ -115,8 +120,8 @@ fn add_recent_file(state: State<'_, AppState>, path: String) {
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or(path);
 
-    let mut persisted = persistence::load(&state.config_dir);
-    let mut recents = persisted.recent_files.unwrap_or_default();
+    let mut persisted = state.persisted.lock().unwrap();
+    let mut recents = persisted.recent_files.clone().unwrap_or_default();
     persistence::update_recent_list(&mut recents, resolved, MAX_RECENT_FILES);
     persisted.recent_files = Some(recents);
     persistence::save(&state.config_dir, &persisted);
@@ -154,6 +159,37 @@ fn render_markdown(text: String) -> RenderedMarkdown {
     RenderedMarkdown {
         html: smd_core::markdown::to_html(&text),
     }
+}
+
+/// Batch command: read file, set it as current, render markdown, and update
+/// recent files — all in a single IPC round-trip.
+#[derive(Serialize)]
+struct OpenedFile {
+    text: String,
+    html: String,
+}
+
+#[tauri::command]
+fn open_and_render_file(state: State<'_, AppState>, path: String) -> Result<OpenedFile, String> {
+    let text =
+        fs::read_to_string(&path).map_err(|e| format!("Failed to read {}: {}", path, e))?;
+
+    *state.current_file.lock().unwrap() = Some(PathBuf::from(&path));
+
+    let parsed = smd_core::markdown::parse_frontmatter(&text);
+    let html = smd_core::markdown::to_html(parsed.body);
+
+    // Update recent files
+    let resolved = fs::canonicalize(&path)
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| path);
+    let mut persisted = state.persisted.lock().unwrap();
+    let mut recents = persisted.recent_files.clone().unwrap_or_default();
+    persistence::update_recent_list(&mut recents, resolved, MAX_RECENT_FILES);
+    persisted.recent_files = Some(recents);
+    persistence::save(&state.config_dir, &persisted);
+
+    Ok(OpenedFile { text, html })
 }
 
 // ---- App info ----
@@ -237,6 +273,8 @@ pub fn run() {
 
     let config_dir = persistence::get_config_dir();
     let saved = persistence::load(&config_dir);
+    let saved_width = saved.width;
+    let saved_height = saved.height;
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -244,6 +282,7 @@ pub fn run() {
         .manage(AppState {
             current_file: Mutex::new(file_arg),
             initial_folder: folder_arg,
+            persisted: Mutex::new(saved),
             config_dir,
         })
         .invoke_handler(tauri::generate_handler![
@@ -260,13 +299,14 @@ pub fn run() {
             resolve_relative_path,
             list_md_files,
             render_markdown,
+            open_and_render_file,
             get_app_version,
         ])
         .setup(move |app| {
             let window = app.get_webview_window("main").unwrap();
             window.set_title("smd").unwrap();
 
-            if let (Some(w), Some(h)) = (saved.width, saved.height) {
+            if let (Some(w), Some(h)) = (saved_width, saved_height) {
                 let _ = window.set_size(tauri::LogicalSize::new(w, h));
             }
 
