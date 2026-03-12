@@ -403,11 +403,10 @@ async function renderMermaidDiagrams() {
 
 // ---- Content display ----
 
-async function showContent(md, filename) {
+function displayContent(md, bodyHtml, filename) {
   currentRawMarkdown = md;
-  const { meta, body } = parseFrontmatter(md);
+  const { meta } = parseFrontmatter(md);
   const fmHtml = meta ? renderFrontmatter(meta) : "";
-  const { html: bodyHtml } = await invoke("render_markdown", { text: body });
   content.innerHTML = fmHtml + bodyHtml;
 
   // Show just the filename in the toolbar
@@ -435,13 +434,10 @@ async function showContent(md, filename) {
 async function openFile(path) {
   try {
     closeFindBar();
-    const text = await invoke("read_file", { path });
-    await invoke("set_current_file", { path });
+    // Single IPC call: read, render, set current file, and update recents
+    const { text, html } = await invoke("open_and_render_file", { path });
     currentFilePath = path;
-    await showContent(text, path);
-
-    // Track in recent files
-    invoke("add_recent_file", { path }).catch(() => {});
+    displayContent(text, html, path);
 
     // Update drawer highlight if open
     if (drawerOpen) updateDrawerHighlight();
@@ -711,8 +707,10 @@ btnFindClose.addEventListener("click", closeFindBar);
 async function reloadCurrentFile() {
   if (!currentFilePath) return;
   try {
-    const text = await invoke("read_file", { path: currentFilePath });
-    await showContent(text, currentFilePath);
+    const { text, html } = await invoke("open_and_render_file", {
+      path: currentFilePath,
+    });
+    displayContent(text, html, currentFilePath);
   } catch (err) {
     console.error("Failed to reload file:", err);
   }

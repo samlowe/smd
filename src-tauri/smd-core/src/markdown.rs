@@ -13,32 +13,29 @@ pub fn to_html(md: &str) -> String {
 
     let parser = Parser::new_ext(md, opts);
 
-    // Collect events, injecting id attributes on headings
+    // Collect events, injecting id attributes on headings.
+    // Track the position of the current heading start to avoid an O(n) reverse scan.
     let mut heading_text = String::new();
-    let mut in_heading = false;
+    let mut heading_start: Option<usize> = None;
     let mut events: Vec<Event> = Vec::new();
 
     for event in parser {
         match &event {
             Event::Start(Tag::Heading { .. }) => {
-                in_heading = true;
                 heading_text.clear();
+                heading_start = Some(events.len());
                 events.push(event);
             }
             Event::End(TagEnd::Heading(level)) => {
-                in_heading = false;
-                let slug = slugify(&heading_text);
                 let lvl = *level as u8;
-                // Replace the Start event with raw HTML that includes the id
-                if let Some(pos) = events.iter().rposition(|e| {
-                    matches!(e, Event::Start(Tag::Heading { .. }))
-                }) {
+                if let Some(pos) = heading_start.take() {
+                    let slug = slugify(&heading_text);
                     events[pos] =
                         Event::Html(format!("<h{lvl} id=\"{slug}\">").into());
                 }
                 events.push(Event::Html(format!("</h{lvl}>\n").into()));
             }
-            Event::Text(t) if in_heading => {
+            Event::Text(t) if heading_start.is_some() => {
                 heading_text.push_str(t);
                 events.push(event);
             }
@@ -55,22 +52,53 @@ pub fn to_html(md: &str) -> String {
 
 /// Turn heading text into a URL-friendly slug matching GitHub conventions.
 fn slugify(text: &str) -> String {
-    text.to_lowercase()
-        .chars()
-        .map(|c| {
-            if c.is_alphanumeric() {
-                c
-            } else if c == ' ' || c == '-' {
-                '-'
-            } else {
-                // drop other characters
-                '\0'
+    let mut slug = String::with_capacity(text.len());
+    for c in text.chars() {
+        if c.is_alphanumeric() {
+            for lc in c.to_lowercase() {
+                slug.push(lc);
             }
-        })
-        .filter(|&c| c != '\0')
-        .collect::<String>()
-        .trim_matches('-')
-        .to_string()
+        } else if c == ' ' || c == '-' {
+            slug.push('-');
+        }
+    }
+    let trimmed = slug.trim_matches('-');
+    if trimmed.len() == slug.len() {
+        slug
+    } else {
+        trimmed.to_string()
+    }
+}
+
+/// Result of splitting YAML frontmatter from markdown body.
+pub struct Frontmatter<'a> {
+    pub body: &'a str,
+}
+
+/// Strip a leading `---\n...\n---` frontmatter block, returning the body.
+pub fn parse_frontmatter(text: &str) -> Frontmatter<'_> {
+    if !text.starts_with("---") {
+        return Frontmatter { body: text };
+    }
+    // Find end of first line (the opening ---)
+    let after_open = match text[3..].find('\n') {
+        Some(i) => 3 + i + 1,
+        None => return Frontmatter { body: text },
+    };
+    // Check that the opening line is just `---` with optional trailing whitespace
+    if !text[3..after_open].trim().is_empty() {
+        return Frontmatter { body: text };
+    }
+    // Find the closing ---
+    if let Some(pos) = text[after_open..].find("\n---") {
+        let end = after_open + pos;
+        // Skip past the closing --- line
+        let rest = &text[end + 4..];
+        let body = rest.strip_prefix('\n').unwrap_or(rest);
+        Frontmatter { body }
+    } else {
+        Frontmatter { body: text }
+    }
 }
 
 #[cfg(test)]

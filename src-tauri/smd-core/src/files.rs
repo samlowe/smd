@@ -27,7 +27,7 @@ pub fn list_markdown_files(dir: &Path) -> Result<Vec<String>, String> {
             None
         })
         .collect();
-    files.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+    files.sort_by_cached_key(|f| f.to_lowercase());
     Ok(files)
 }
 
