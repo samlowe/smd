@@ -806,6 +806,56 @@ body,
 }
 
 /* ============================================================
+   Copy format dropdown
+   ============================================================ */
+
+#copy-panel {
+  display: none;
+  position: fixed;
+  top: 40px;
+  left: 180px;
+  width: 180px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px var(--shadow);
+  z-index: 100;
+  overflow: hidden;
+  flex-direction: column;
+  padding: 4px;
+}
+
+#copy-panel.open {
+  display: flex;
+}
+
+.copy-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  transition: background 0.1s;
+}
+
+.copy-option:hover {
+  background: var(--btn-hover);
+}
+
+.copy-option svg {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+/* ============================================================
    Find in page bar
    ============================================================ */
 
