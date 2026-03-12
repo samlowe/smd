@@ -746,7 +746,17 @@ async function copyAsFormat(format) {
     if (format === "markdown") {
       await navigator.clipboard.writeText(currentRawMarkdown);
     } else {
-      const html = content.innerHTML;
+      const clone = content.cloneNode(true);
+      clone.querySelectorAll(".mermaid svg").forEach((svg) => {
+        const serialized = new XMLSerializer().serializeToString(svg);
+        const dataUri =
+          "data:image/svg+xml;base64," +
+          btoa(unescape(encodeURIComponent(serialized)));
+        const img = document.createElement("img");
+        img.src = dataUri;
+        svg.closest(".mermaid").replaceWith(img);
+      });
+      const html = clone.innerHTML;
       const blob = new Blob([html], { type: "text/html" });
       const textBlob = new Blob([html], { type: "text/plain" });
       await navigator.clipboard.write([
