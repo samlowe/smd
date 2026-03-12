@@ -746,8 +746,7 @@ async function copyAsFormat(format) {
     if (format === "markdown") {
       await navigator.clipboard.writeText(currentRawMarkdown);
     } else {
-      const { body } = parseFrontmatter(currentRawMarkdown);
-      const { html } = await invoke("render_markdown", { text: body });
+      const html = content.innerHTML;
       const blob = new Blob([html], { type: "text/html" });
       const textBlob = new Blob([html], { type: "text/plain" });
       await navigator.clipboard.write([
