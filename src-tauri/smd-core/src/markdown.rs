@@ -1,8 +1,9 @@
-use pulldown_cmark::{html, Options, Parser};
+use pulldown_cmark::{html, Event, Options, Parser, Tag, TagEnd};
 
 /// Convert a Markdown string to HTML.
 ///
 /// Enables tables, strikethrough, task-lists, and footnotes.
+/// Headings receive slugified `id` attributes so that anchor links work.
 pub fn to_html(md: &str) -> String {
     let mut opts = Options::empty();
     opts.insert(Options::ENABLE_TABLES);
@@ -11,9 +12,65 @@ pub fn to_html(md: &str) -> String {
     opts.insert(Options::ENABLE_FOOTNOTES);
 
     let parser = Parser::new_ext(md, opts);
+
+    // Collect events, injecting id attributes on headings
+    let mut heading_text = String::new();
+    let mut in_heading = false;
+    let mut events: Vec<Event> = Vec::new();
+
+    for event in parser {
+        match &event {
+            Event::Start(Tag::Heading { .. }) => {
+                in_heading = true;
+                heading_text.clear();
+                events.push(event);
+            }
+            Event::End(TagEnd::Heading(level)) => {
+                in_heading = false;
+                let slug = slugify(&heading_text);
+                let lvl = *level as u8;
+                // Replace the Start event with raw HTML that includes the id
+                if let Some(pos) = events.iter().rposition(|e| {
+                    matches!(e, Event::Start(Tag::Heading { .. }))
+                }) {
+                    events[pos] =
+                        Event::Html(format!("<h{lvl} id=\"{slug}\">").into());
+                }
+                events.push(Event::Html(format!("</h{lvl}>\n").into()));
+            }
+            Event::Text(t) if in_heading => {
+                heading_text.push_str(t);
+                events.push(event);
+            }
+            _ => {
+                events.push(event);
+            }
+        }
+    }
+
     let mut html_output = String::with_capacity(md.len() * 2);
-    html::push_html(&mut html_output, parser);
+    html::push_html(&mut html_output, events.into_iter());
     html_output
+}
+
+/// Turn heading text into a URL-friendly slug matching GitHub conventions.
+fn slugify(text: &str) -> String {
+    text.to_lowercase()
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() {
+                c
+            } else if c == ' ' || c == '-' {
+                '-'
+            } else {
+                // drop other characters
+                '\0'
+            }
+        })
+        .filter(|&c| c != '\0')
+        .collect::<String>()
+        .trim_matches('-')
+        .to_string()
 }
 
 #[cfg(test)]
@@ -29,7 +86,7 @@ mod tests {
     #[test]
     fn heading() {
         let html = to_html("# Title");
-        assert!(html.contains("<h1>Title</h1>"));
+        assert!(html.contains("<h1 id=\"title\">Title</h1>"));
     }
 
     #[test]
@@ -38,11 +95,17 @@ mod tests {
             let md = format!("{} H{}", "#".repeat(level), level);
             let html = to_html(&md);
             assert!(
-                html.contains(&format!("<h{}>H{}</h{}>", level, level, level)),
+                html.contains(&format!("<h{} id=\"h{}\">H{}</h{}>", level, level, level, level)),
                 "Level {} heading failed",
                 level,
             );
         }
+    }
+
+    #[test]
+    fn heading_slug() {
+        let html = to_html("## Hello World!");
+        assert!(html.contains(r#"<h2 id="hello-world">Hello World!</h2>"#));
     }
 
     #[test]

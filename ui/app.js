@@ -16,6 +16,7 @@ const ZOOM_MIN = 50;
 const ZOOM_MAX = 200;
 
 let currentFilePath = null;
+let currentRawMarkdown = null;
 
 // ---- Elements ----
 
@@ -43,6 +44,9 @@ const btnAbout = document.getElementById("btn-about");
 const aboutOverlay = document.getElementById("about-overlay");
 const aboutVersion = document.getElementById("about-version");
 const aboutClose = document.getElementById("about-close");
+const btnReload = document.getElementById("btn-reload");
+const btnCopy = document.getElementById("btn-copy");
+const copyPanel = document.getElementById("copy-panel");
 const findBar = document.getElementById("find-bar");
 const findInput = document.getElementById("find-input");
 const findCount = document.getElementById("find-count");
@@ -267,6 +271,9 @@ document.addEventListener("mousedown", (e) => {
   if (recentPanelOpen && !recentPanel.contains(e.target) && e.target !== btnRecent && !btnRecent.contains(e.target)) {
     closeRecentPanel();
   }
+  if (copyPanelOpen && !copyPanel.contains(e.target) && e.target !== btnCopy && !btnCopy.contains(e.target)) {
+    closeCopyPanel();
+  }
 });
 
 // ---- Initialize Theme ----
@@ -397,6 +404,7 @@ async function renderMermaidDiagrams() {
 // ---- Content display ----
 
 async function showContent(md, filename) {
+  currentRawMarkdown = md;
   const { meta, body } = parseFrontmatter(md);
   const fmHtml = meta ? renderFrontmatter(meta) : "";
   const { html: bodyHtml } = await invoke("render_markdown", { text: body });
@@ -411,6 +419,10 @@ async function showContent(md, filename) {
   // Make content visible immediately so the user sees raw text fast
   contentWrapper.classList.add("active");
   emptyState.classList.add("hidden");
+
+  // Show file-action buttons
+  btnReload.style.display = "";
+  btnCopy.style.display = "";
 
   // Resolve images, highlight code, and render diagrams after paint
   requestAnimationFrame(() => {
@@ -694,6 +706,75 @@ btnFindPrev.addEventListener("click", findPrev);
 btnFindNext.addEventListener("click", findNext);
 btnFindClose.addEventListener("click", closeFindBar);
 
+// ---- Reload current file ----
+
+async function reloadCurrentFile() {
+  if (!currentFilePath) return;
+  try {
+    const text = await invoke("read_file", { path: currentFilePath });
+    await showContent(text, currentFilePath);
+  } catch (err) {
+    console.error("Failed to reload file:", err);
+  }
+}
+
+// ---- Copy panel ----
+
+let copyPanelOpen = false;
+
+function toggleCopyPanel() {
+  copyPanelOpen = !copyPanelOpen;
+  copyPanel.classList.toggle("open", copyPanelOpen);
+  if (copyPanelOpen) {
+    // Position below the copy button
+    const rect = btnCopy.getBoundingClientRect();
+    copyPanel.style.left = `${rect.left}px`;
+    closeThemePanel();
+    closeRecentPanel();
+  }
+}
+
+function closeCopyPanel() {
+  copyPanelOpen = false;
+  copyPanel.classList.remove("open");
+}
+
+async function copyAsFormat(format) {
+  closeCopyPanel();
+  if (!currentRawMarkdown) return;
+  try {
+    if (format === "markdown") {
+      await navigator.clipboard.writeText(currentRawMarkdown);
+    } else {
+      const clone = content.cloneNode(true);
+      clone.querySelectorAll(".mermaid svg").forEach((svg) => {
+        const serialized = new XMLSerializer().serializeToString(svg);
+        const dataUri =
+          "data:image/svg+xml;base64," +
+          btoa(unescape(encodeURIComponent(serialized)));
+        const img = document.createElement("img");
+        img.src = dataUri;
+        svg.closest(".mermaid").replaceWith(img);
+      });
+      const html = clone.innerHTML;
+      const blob = new Blob([html], { type: "text/html" });
+      const textBlob = new Blob([html], { type: "text/plain" });
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": blob,
+          "text/plain": textBlob,
+        }),
+      ]);
+    }
+  } catch (err) {
+    console.error("Failed to copy:", err);
+  }
+}
+
+copyPanel.querySelectorAll(".copy-option").forEach((btn) => {
+  btn.addEventListener("click", () => copyAsFormat(btn.dataset.format));
+});
+
 // ---- About modal ----
 
 let aboutOpen = false;
@@ -807,9 +888,13 @@ document.addEventListener("keydown", (e) => {
   } else if (ctrl && e.key === "b") {
     e.preventDefault();
     toggleDrawer();
+  } else if (ctrl && e.key === "r") {
+    e.preventDefault();
+    reloadCurrentFile();
   } else if (e.key === "Escape") {
     if (aboutOpen) closeAboutModal();
     else if (findBar.classList.contains("open")) closeFindBar();
+    else if (copyPanelOpen) closeCopyPanel();
     else if (themePanelOpen) closeThemePanel();
     else if (recentPanelOpen) closeRecentPanel();
     else if (drawerOpen) closeDrawer();
@@ -841,6 +926,8 @@ btnTheme.addEventListener("click", toggleThemePanel);
 btnImportTheme.addEventListener("click", ThemeManager.importCustomTheme);
 btnDrawer.addEventListener("click", toggleDrawer);
 btnRecent.addEventListener("click", toggleRecentPanel);
+btnReload.addEventListener("click", reloadCurrentFile);
+btnCopy.addEventListener("click", toggleCopyPanel);
 btnAbout.addEventListener("click", openAboutModal);
 
 // ---- Init: load file from CLI arg, restore zoom ----
