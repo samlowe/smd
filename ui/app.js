@@ -53,6 +53,7 @@ const findCount = document.getElementById("find-count");
 const btnFindPrev = document.getElementById("find-prev");
 const btnFindNext = document.getElementById("find-next");
 const btnFindClose = document.getElementById("find-close");
+const btnClipboard = document.getElementById("btn-clipboard");
 
 function highlightCodeBlocks() {
   content.querySelectorAll("pre code").forEach((block) => {
@@ -240,6 +241,49 @@ const ThemeManager = (() => {
     importCustomTheme,
   };
 })();
+
+// ---- Clipboard display ----
+
+/** Display clipboard content in the viewer without associating a file. */
+function displayClipboardContent(md, bodyHtml) {
+  currentFilePath = null;
+  currentRawMarkdown = md;
+  const { meta } = parseFrontmatter(md);
+  const fmHtml = meta ? renderFrontmatter(meta) : "";
+  content.innerHTML = fmHtml + bodyHtml;
+
+  filenameEl.textContent = "Clipboard";
+  filenameEl.title = "Loaded from clipboard";
+  document.title = "Clipboard — smd";
+
+  contentWrapper.classList.add("active");
+  emptyState.classList.add("hidden");
+
+  // No file to reload; copy still works
+  btnReload.style.display = "none";
+  btnCopy.style.display = "";
+
+  requestAnimationFrame(() => {
+    // No relative images to resolve for clipboard content
+    highlightCodeBlocks();
+    renderMermaidDiagrams();
+  });
+}
+
+async function loadFromClipboard() {
+  try {
+    const text = await invoke("read_clipboard_text");
+    if (!isSafeText(text)) {
+      console.warn("Clipboard content does not appear to be safe text/markdown");
+      return;
+    }
+    closeFindBar();
+    const { html } = await invoke("render_markdown", { text });
+    displayClipboardContent(text, html);
+  } catch (err) {
+    console.error("Failed to load from clipboard:", err);
+  }
+}
 
 // ---- Theme Panel Toggle ----
 
@@ -889,6 +933,9 @@ document.addEventListener("keydown", (e) => {
   } else if (ctrl && e.key === "r") {
     e.preventDefault();
     reloadCurrentFile();
+  } else if (ctrl && e.shiftKey && e.key.toLowerCase() === "v") {
+    e.preventDefault();
+    loadFromClipboard();
   } else if (e.key === "Escape") {
     if (aboutOpen) closeAboutModal();
     else if (findBar.classList.contains("open")) closeFindBar();
@@ -926,6 +973,7 @@ btnDrawer.addEventListener("click", toggleDrawer);
 btnRecent.addEventListener("click", toggleRecentPanel);
 btnReload.addEventListener("click", reloadCurrentFile);
 btnCopy.addEventListener("click", toggleCopyPanel);
+btnClipboard.addEventListener("click", loadFromClipboard);
 btnAbout.addEventListener("click", openAboutModal);
 
 // ---- Init: load file from CLI arg, restore zoom ----

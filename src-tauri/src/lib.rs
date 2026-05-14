@@ -8,6 +8,14 @@ use smd_core::persistence::{self, MAX_RECENT_FILES};
 use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
 
+// ---- Clipboard ----
+
+#[tauri::command]
+fn read_clipboard_text(app: tauri::AppHandle) -> Result<String, String> {
+    let clipboard = app.state::<tauri_plugin_clipboard_manager::Clipboard<tauri::Wry>>();
+    clipboard.read_text().map_err(|e| e.to_string())
+}
+
 // ---- App state ----
 
 pub struct AppState {
@@ -279,6 +287,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .manage(AppState {
             current_file: Mutex::new(file_arg),
             initial_folder: folder_arg,
@@ -301,6 +310,7 @@ pub fn run() {
             render_markdown,
             open_and_render_file,
             get_app_version,
+            read_clipboard_text,
         ])
         .setup(move |app| {
             let window = app.get_webview_window("main").unwrap();

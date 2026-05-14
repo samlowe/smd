@@ -4,6 +4,26 @@
    ============================================================ */
 
 /**
+ * Simple safety check: ensure text is non-empty, has no null bytes,
+ * and is mostly printable characters (won't crash the viewer).
+ */
+function isSafeText(text) {
+  if (typeof text !== "string") return false;
+  if (text.length === 0 || text.length >= 5_000_000) return false;
+  if (text.includes("\x00")) return false;
+  // Allow common text: printable ASCII, tabs, newlines, and high Unicode
+  let printable = 0;
+  for (let i = 0; i < Math.min(text.length, 1000); i++) {
+    const code = text.charCodeAt(i);
+    if (code === 9 || code === 10 || code === 13 || (code >= 32 && code <= 126) || code >= 160) {
+      printable++;
+    }
+  }
+  const sampleLen = Math.min(text.length, 1000);
+  return printable / sampleLen > 0.8;
+}
+
+/**
  * Extract the filename from a full path (cross-platform).
  * Works with both forward slashes and backslashes.
  */
@@ -168,5 +188,6 @@ if (typeof module !== "undefined" && module.exports) {
     parseSimpleYaml,
     parseFrontmatter,
     renderFrontmatter,
+    isSafeText,
   };
 }
