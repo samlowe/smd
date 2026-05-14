@@ -926,6 +926,19 @@ document.addEventListener("drop", async (e) => {
 
 // ---- Keyboard shortcuts ----
 
+/** True when focus is in a control that should receive native paste (Ctrl/Cmd+V). */
+function isFormFieldFocused(target) {
+  let el =
+    target && target.nodeType === Node.TEXT_NODE ? target.parentElement : target;
+  while (el && el !== document.documentElement) {
+    const tag = el.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+    if (el.isContentEditable) return true;
+    el = el.parentElement;
+  }
+  return false;
+}
+
 document.addEventListener("keydown", (e) => {
   const ctrl = e.ctrlKey || e.metaKey;
 
@@ -954,6 +967,10 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     reloadCurrentFile();
   } else if (ctrl && e.shiftKey && e.key.toLowerCase() === "v") {
+    e.preventDefault();
+    loadFromClipboard();
+  } else if (ctrl && !e.shiftKey && e.key.toLowerCase() === "v") {
+    if (isFormFieldFocused(e.target)) return;
     e.preventDefault();
     loadFromClipboard();
   } else if (e.key === "Escape") {
