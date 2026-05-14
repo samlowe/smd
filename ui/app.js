@@ -98,8 +98,27 @@ const ThemeManager = (() => {
     // Persist
     localStorage.setItem("smd-theme-id", theme.id);
 
+    // Cache vars for inline use on next load
+    cacheVars();
+
     // Update picker UI
     updatePickerSelection();
+  }
+
+  /** Cache current CSS vars to localStorage for inline use on page load */
+  function cacheVars() {
+    try {
+      const vars = {};
+      const style = getComputedStyle(document.documentElement);
+      for (const key of style) {
+        if (key.startsWith("--")) {
+          vars[key] = style.getPropertyValue(key).trim();
+        }
+      }
+      localStorage.setItem("smd-cached-vars", JSON.stringify(vars));
+    } catch {
+      // Ignore errors (e.g., if called before DOM ready)
+    }
   }
 
   /** Apply font preset */
@@ -110,6 +129,7 @@ const ThemeManager = (() => {
     root.style.setProperty("--font-ui", preset.ui);
     root.style.setProperty("--font-code", preset.code);
     localStorage.setItem("smd-font", presetId);
+    cacheVars();
   }
 
   /** Get stored theme ID */
