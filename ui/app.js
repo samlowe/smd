@@ -54,6 +54,7 @@ const btnFindPrev = document.getElementById("find-prev");
 const btnFindNext = document.getElementById("find-next");
 const btnFindClose = document.getElementById("find-close");
 const btnClipboard = document.getElementById("btn-clipboard");
+const btnWide = document.getElementById("btn-wide");
 
 function highlightCodeBlocks() {
   content.querySelectorAll("pre code").forEach((block) => {
@@ -357,8 +358,9 @@ window
 // ---- Zoom ----
 
 function updateZoom() {
-  content.style.transform = `scale(${currentZoom / 100})`;
-  content.style.transformOrigin = "top center";
+  const scale = currentZoom / 100;
+  content.style.transform = `scale(${scale})`;
+  document.documentElement.style.setProperty("--smd-zoom", scale);
   zoomLevelEl.textContent = `${currentZoom}%`;
   debouncedSaveState();
 }
@@ -380,6 +382,13 @@ function zoomOut() {
 function zoomReset() {
   currentZoom = 100;
   updateZoom();
+}
+
+// ---- Wide mode toggle ----
+
+function toggleWideMode() {
+  contentWrapper.classList.toggle("wide-mode");
+  btnWide.classList.toggle("active", contentWrapper.classList.contains("wide-mode"));
 }
 
 // ---- Window state persistence ----
@@ -1011,6 +1020,7 @@ btnRecent.addEventListener("click", toggleRecentPanel);
 btnReload.addEventListener("click", reloadCurrentFile);
 btnCopy.addEventListener("click", toggleCopyPanel);
 btnClipboard.addEventListener("click", loadFromClipboard);
+btnWide.addEventListener("click", toggleWideMode);
 btnAbout.addEventListener("click", openAboutModal);
 
 // ---- Init: load file from CLI arg, restore zoom ----
@@ -1026,8 +1036,9 @@ async function init() {
   // Restore saved zoom
   if (savedZoom !== null && savedZoom >= ZOOM_MIN && savedZoom <= ZOOM_MAX) {
     currentZoom = savedZoom;
-    content.style.transform = `scale(${currentZoom / 100})`;
-    content.style.transformOrigin = "top center";
+    const scale = currentZoom / 100;
+    content.style.transform = `scale(${scale})`;
+    document.documentElement.style.setProperty("--smd-zoom", scale);
     zoomLevelEl.textContent = `${currentZoom}%`;
   }
 
