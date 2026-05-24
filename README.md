@@ -30,15 +30,18 @@ smd
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| Ctrl+O | Open file |
-| Ctrl+B | Toggle file browser drawer |
-| Ctrl+T | Cycle through themes |
-| Ctrl+= | Zoom in |
-| Ctrl+- | Zoom out |
-| Ctrl+0 | Reset zoom |
-| Escape | Close open panels/drawer |
+| Shortcut | Action                                |
+| -------- | ------------------------------------- |
+| Ctrl+O   | Open file                             |
+| Ctrl+B   | Toggle file browser drawer            |
+| Ctrl+T   | Cycle through themes                  |
+| Ctrl+=   | Zoom in                               |
+| Ctrl+-   | Zoom out                              |
+| Ctrl+0   | Reset zoom                            |
+| Ctrl+F   | Open find bar                         |
+| Ctrl+C   | Copy markdown source to clipboard     |
+| Ctrl+V   | Render markdown source from clipboard |
+| Escape   | Close open panels/drawer              |
 
 ## Frontmatter
 
@@ -102,6 +105,7 @@ cargo tauri build
 ```
 
 Output:
+
 - Binary: `src-tauri/target/release/smd`
 - Packages: `src-tauri/target/release/bundle/` (.deb, .rpm, .AppImage)
 
@@ -126,6 +130,7 @@ cargo tauri build
 ```
 
 Output:
+
 - App bundle: `src-tauri/target/release/bundle/macos/smd.app`
 - Disk image: `src-tauri/target/release/bundle/dmg/smd_0.3.7_aarch64.dmg`
 
@@ -141,6 +146,7 @@ cargo tauri build
 ```
 
 Output:
+
 - Executable: `src-tauri\target\release\smd.exe`
 - Installer: `src-tauri\target\release\bundle\msi\smd_0.3.7_x64_en-US.msi`
 - Setup: `src-tauri\target\release\bundle\nsis\smd_0.3.7_x64-setup.exe`
