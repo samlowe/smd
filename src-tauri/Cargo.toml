@@ -6,6 +6,7 @@ name = "smd"
 version = "0.3.20"
 description = "Simple Markdown Viewer"
 edition = "2021"
+license = "MIT"
 
 [lib]
 name = "smd_lib"

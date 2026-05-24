@@ -136,7 +136,7 @@ Output:
 
 ### Windows
 
-> **Note:** These instructions are provisional and have not been tested. Please open an issue if you run into problems.
+> **Note:** These instructions for installing on Windows are provisional for informational purposes (they have not been tested).
 
 Install the [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with the "Desktop development with C++" workload. Tauri uses the built-in WebView2 (included in Windows 10/11).
 
@@ -159,3 +159,7 @@ For a faster feedback loop during development (hot-reloading frontend, debug bui
 npm install
 cargo tauri dev
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE).

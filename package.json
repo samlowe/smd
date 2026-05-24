@@ -2,6 +2,7 @@
   "name": "smd",
   "version": "0.3.20",
   "description": "Simple Markdown Viewer",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "tauri": "cargo tauri",

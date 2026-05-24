@@ -3,6 +3,7 @@ name = "smd-core"
 version = "0.3.20"
 edition = "2021"
 description = "Core logic for smd (Simple Markdown Viewer)"
+license = "MIT"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
