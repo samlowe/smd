@@ -245,6 +245,7 @@ body {
 .markdown-body {
   max-width: 780px;
   margin: 0 auto;
+  padding-bottom: 2em;
   transform-origin: top center;
 }
 
