@@ -31,12 +31,17 @@
     ]
   },
   "hooks": {
-    "preToolUse": [
+    "PreToolUse": [
       {
         "matcher": "execute_command",
-        "command": "jq -r .tool_input.command | .claude/validate_bash.sh",
-        "timeout": 15.0,
-        "onError": "deny"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r .tool_input.command | .claude/validate_bash.sh",
+            "timeout": 15.0,
+            "onError": "deny"
+          }
+        ]
       }
     ]
   }
